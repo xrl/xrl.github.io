@@ -33,7 +33,18 @@ pub trait HistoryCacheTrait {
 ```
 
 The code above is used for tracking state changes. I imagine it will grow to become one of the
-more complex bits of my library. A cache change is a wrapper around a buffer but I won't muddy this post with its definition.
+more complex bits of my library. A cache change is a wrapper around a buffer with a simple definition:
+
+```rust
+#[derive(PartialEq)]
+pub struct CacheChange {
+    kind: ChangeKind,
+    writer_guid: Guid,
+    instance_handle: InstanceHandle,
+    sequence_number: SequenceNumber,
+    data: Vec<u8>
+}
+```
 
 The first implementer makes heavy use of the `unimplemented!()` macro to side step actual implementation but here's the suspicious implentation:
 
