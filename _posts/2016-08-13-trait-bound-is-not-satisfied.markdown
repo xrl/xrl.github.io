@@ -4,9 +4,10 @@ title:  "Trait Bound Is Not Satisfied"
 date:   2016-08-13 12:58:32 -0700
 categories: rust traits types rtps
 ---
-I'm using Rust and its trait system to build out a large library. The idea: leave room
-for testing out multiple implementations and get some succinct contracts. This will give me the ability to switch
-things out so I can benchmark as the library grows. The first round of implementations will use the simplest data
+I'm using [Rust](https://www.rust-lang.org/] and its [trait system](https://doc.rust-lang.org/book/traits.html) to
+build out a large library. The idea: leave room
+for testing out multiple implementations and get some succinct contracts. This will give me the ability to
+A/B test and benchmark different parts as the library grows. The first round of implementations will use the simplest data
 types (read: `Vec`s with linear scans).
 
 Now I'm running in to issues with the type checker and `PartialEq` and I think my use of traits has something to do
@@ -31,7 +32,7 @@ pub trait HistoryCacheTrait {
 }
 ```
 
-The code above is used for tracking state changes of a RTPS Writer. I imagine it will grow to become one of the
+The code above is used for tracking state changes. I imagine it will grow to become one of the
 more complex bits of my library. A cache change is a wrapper around a buffer but I won't muddy this post with its definition.
 
 The first implementer makes heavy use of the `unimplemented!()` macro to side step actual implementation but here's the suspicious implentation:
@@ -63,7 +64,7 @@ impl HistoryCacheTrait for HistoryCache {
 }
 ```
 
-when compiling the code I get this error:
+when compiling the code I get this error (courtesy of [new formatting in Rust nightly](https://blog.rust-lang.org/2016/08/10/Shape-of-errors-to-come.html)):
 
 ```
    Compiling rtps v0.1.0 (file:///Users/xavierlange/code/dds/rtps)
