@@ -4,7 +4,7 @@ title:  "Trait Bound Is Not Satisfied"
 date:   2016-08-13 12:58:32 -0700
 categories: rust traits types rtps
 ---
-I'm using [Rust](https://www.rust-lang.org/] and its [trait system](https://doc.rust-lang.org/book/traits.html) to
+I'm using [Rust](https://www.rust-lang.org/) and its [trait system](https://doc.rust-lang.org/book/traits.html) to
 build out a large library. The idea: leave room
 for testing out multiple implementations and get some succinct contracts. This will give me the ability to
 A/B test and benchmark different parts as the library grows. The first round of implementations will use the simplest data
