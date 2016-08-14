@@ -64,7 +64,7 @@ impl HistoryCacheTrait for HistoryCache {
     // SNIP
     fn remove_change(&mut self, change: CacheChange) -> HistoryCacheResult {
         for c in &self.changes {
-            if *c == change {
+            if c == change {
 
             }
         }
