@@ -87,7 +87,7 @@ In any case
 
 I'm impressed with the open development of the plugin. I highly recommend looking at the [tickets](https://github.com/intellij-rust/intellij-rust/issues) to get a feel for the developers priorities.
 
-The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. The darcula theme is reminiscent of Sublime Text. As with most kitchen sink IDEs: you're best served on a fast machine. I hope you'll try the Rust integration.
+The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. The darcula theme is reminiscent of Sublime Text: easy on the eyes and attractive. As with most kitchen sink IDEs, you are best served on a fast machine. I recommend giving the Rust plugin a try.
 
 [The official project page has way more information](https://intellij-rust.github.io)
 
