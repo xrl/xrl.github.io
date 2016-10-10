@@ -38,20 +38,23 @@ We would be able to leverage IntelliJ Platform infrastructure for incremental an
 
 OK, that's fine. If they are offering a more seamless experience with less config then that keeps me closer to what I like about Sublime. I'm not a gear head when it comes to IDEs -- less config is better for me.
 
-Key combos for helpful things in IntelliJ
+Key combos + helpful pointers for IntelliJ
 ---
 
  * `cmd-b` and click on any type, in your crate or in the stdlib: jump to the definition.
  * `cmd-[` or `cmd-]`: goes backwards or forwards in your 'jump' history. Great so you can get back to your code.
  * `cmd-shift-o`: grep filenames in your project, hit `enter` to open file. Not as fuzzy as Sublime Edit 3, won't tolerate misspellings.
  * `alt-shift` and click: add another caret to the editor. Hit `esc` to leave multi-caret mode. Strictly less powerful than Sublime because you cannot click and drag carets across multiple lines. But can be handy.
- * `cmd-r`: run your test suite. You'll have to configure your run configurations but there's an easy cargo target. Just set the command to `test` and make sure you click `single instance only`. The environmental variable `RUST_BACKTRACE=1` is also handy for when you add panics to your code.
+ * `ctrl-r`: run your test suite. You'll have to configure your run configurations but there's an easy cargo target. Just set the command to `test` and make sure you click `single instance only`. I highly recommend you click `Show backtrace on panic` which sets the environmental variable `RUST_BACKTRACE=1`. Super handy.
+ * `ctrl-shift-r`: run the current test based on your cursor
+ * `cmd-shift-r`: grep through all the code in your project
+ * `cmd-1`/`cmd-4`: toggle project drawer/toggle run drawer
 
-Those key combos, for me, are the MVPs. The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. As usual with kitchen sink IDEs: you're well served on a fast machine.
+Those key combos, for me, are the MVPs. Some of them are a little funky The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. As usual with kitchen sink IDEs: you're well served on a fast machine.
 
-The integration with compiler errors is great. I run Rust nightly and the plugin has no problem highlighting errors so you can click and jump to definition. Handy when working through a backlog of compiler errors (which, as you may know, is very common when writing Rust!).
+The integration with compiler errors is great. I run Rust nightly and the plugin has no problem highlighting errors so you can click and jump to definition. Handy when working through a backlog of compiler errors (which, as you may know, is very common when writing Rust!). Test case
 
-Git integration is very workable -- thankfully there's a built in terminal.
+Git integration is very workable; there's also built in terminal if 
 
 Warts
 ---
@@ -60,7 +63,8 @@ Warts
  * Cannot derive types in situations: loops, iterators, closures. Means you can't jump to definition.
  * Sometimes cannot cross crate boundaries. I use a single git repo with two root modules: the library module and my test suite. The rust plugin cannot jump from the test suite to the library. Fortunately it just disable the hover.
  * `cmd-1`, `cmd-2`, etc are reserved for opening the variety of drawers. I prefer jumping to tabs.
- * Can get lost in the preference. For example, Rust plugin related entries are found in at least two spots. 
+ * Can get lost in the preference. For example, Rust plugin related entries are found in at least two spots.
+ * Plugin cannot jump to lines based on backtrace
 
 In any case
 ---
