@@ -1,18 +1,24 @@
 ---
 layout: post
-title:  "IntelliJ/Rust are becoming buddies"
+title:  "IntelliJ for Rust"
 date:   2016-10-09 12:58:32 -0700
 categories: rust
 ---
 
-Most of the time I do everything in Sublime Edit 3 -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
+IntelliJ/Rust are fast becoming buddies
+---
+
+Most of the time I do everything in Sublime Text 3 -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
 through my project or jumping to a file based on fuzzy filename matching. But it's good to try new dev environments and the more I write Rust the more I want to
-leverage the rich type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial support ecosystem: I'm
-giving the IntelliJ IDE (by Idea Software) a full shake.
+leverage the type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial ecosystem -- I'm
+going to give the IntelliJ IDE (by Idea Software) a fair shake. It doesn't hurt that IntelliJ is also a respected IDE for Java/Scala and Ruby (among many other supported platforms).
 
-IntelliJ CE has been exclusive Rust editor. And over the past few months it has gotten better and better. While still considered a work in progress it has helped me gain productivity.
+IntelliJ CE has been my exclusive Rust dev environment. And over the past few months it has gotten better and better. While
+still considered a work in progress it has helped me gain productivity. The plugin manager frequently alerts
+me of releases in the Rust plugin and the plugin repository reports upwards of 40k downloads -- so more than a few Rustaceans are using the plugin!
+But at the same time I haven't seen much advocacy or critiques.
 
-In this post I want to go over everyday usage and hopefully convince you to give Intellij and the Rust plugin a try.
+In this post I want to go over everyday usage and hopefully convince you to give Intellij and [the Rust plugin](https://intellij-rust.github.io/) a try.
 
 Setup
 ---
@@ -45,19 +51,20 @@ in their own words from [the FAQ](https://intellij-rust.github.io/docs/faq.html)
     typing assistance.
 
 
-OK, that's fine. If they are offering a more seamless experience with less config then that keeps me closer to what I like about Sublime. I'm not a gear head when it comes to IDEs -- less config is better for me.
+OK, that's fine. If they are offering a more seamless experience with less config then that keeps me closer to what I like about Sublime Text. I'm not a gear head when it comes to IDEs -- less config is better for me.
 
 Key combos + helpful pointers for IntelliJ
 ---
 
  * `cmd-b` and click on any type, in your crate or in the stdlib: jump to the definition.
  * `cmd-[` or `cmd-]`: goes backwards or forwards in your 'jump' history. Great so you can get back to your code.
- * `cmd-shift-o`: grep filenames in your project, hit `enter` to open file. Not as fuzzy as Sublime Edit 3, won't tolerate misspellings.
- * `alt-shift` and click: add another caret to the editor. Hit `esc` to leave multi-caret mode. Strictly less powerful than Sublime because you cannot click and drag carets across multiple lines. But can be handy.
+ * `cmd-shift-o`: grep filenames in your project, hit `enter` to open file. Not as fuzzy as Sublime Text, won't tolerate misspellings.
+ * `alt-shift` and click: add another caret to the editor. Hit `esc` to leave multi-caret mode. Strictly less powerful than Sublime Text because you cannot click and drag carets across multiple lines. But can be handy.
  * `ctrl-r`: run your test suite. You'll have to configure your run configurations but there's an easy cargo target. Just set the command to `test` and make sure you click `single instance only`. I highly recommend you click `Show backtrace on panic` which sets the environmental variable `RUST_BACKTRACE=1`. Super handy.
  * `ctrl-shift-r`: run the current test based on your cursor (but make sure you select the 'Cargo Test' target when you're done! it won't switch back automatically)
  * `cmd-shift-r`: grep through all the code in your project
  * `cmd-1`/`cmd-4`: toggle project drawer/toggle run drawer
+ * `cmd-alt-l`: basic rust reformatting (no rustfmt yet). won't insert newlines.
 
 Those keyboard shortcuts are the MVPs.
 
@@ -68,16 +75,19 @@ Git integration is very workable; there's also built in terminal if you want to 
 Warts
 ---
 
- * Multi-caret is less useful than Sublime 3. Click and drag is key.
+ * Multi-caret is less useful than Sublime Text. Click and drag is key and IntelliJ requires you to click for each caret.
  * Cannot derive types in situations: loops, iterators, closures. Means you can't jump to definition.
  * Sometimes cannot cross crate boundaries. I use a single git repo with two root modules: the library module and my test suite. The rust plugin cannot jump from the test suite to the library. Fortunately it just disable the hover.
  * `cmd-1`, `cmd-2`, etc are reserved for opening the variety of drawers. I prefer jumping to tabs.
  * Can get lost in the preference. For example, Rust plugin related entries are found in at least two spots.
  * Plugin cannot jump to lines based on backtrace
- * Keyboard shortcuts could be more ergonomic but I've gotten used to them
+ * Keyboard shortcuts could be more ergonomic but I've gotten used to them 
 
 In any case
 ---
 
-The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. As with most kitchen sink IDEs: you're best served on a fast machine. I hope you'll try the Rust integration.
+I'm impressed with the open development of the plugin. I highly recommend perusing the [tickets](https://github.com/intellij-rust/intellij-rust/issues) to get a feel of what the developers priorities look like.
 
+The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. The darcula theme is reminiscent of Sublime Text. As with most kitchen sink IDEs: you're best served on a fast machine. I hope you'll try the Rust integration.
+
+[The official project page has way more information](https://intellij-rust.github.io)
