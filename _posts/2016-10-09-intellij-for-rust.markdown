@@ -5,9 +5,6 @@ date:   2016-10-09 12:58:32 -0700
 categories: rust
 ---
 
-IntelliJ/Rust are becoming buddies
----
-
 Most of the time I do everything in Sublime Edit 3 -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
 through my project or jumping to a file based on fuzzy filename matching. But it's good to try new dev environments and the more I write Rust the more I want to
 leverage the rich type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial support ecosystem: I'm
