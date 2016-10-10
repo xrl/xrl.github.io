@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Quick Tips for the IntelliJ Rust Integration"
+title:  "IntelliJ/Rust are becoming buddies"
 date:   2016-10-09 12:58:32 -0700
 categories: rust
 ---
@@ -13,7 +13,9 @@ through my project or jumping to a file based on fuzzy filename matching. But it
 leverage the rich type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial support ecosystem: I'm
 giving the IntelliJ IDE (by Idea Software) a full shake.
 
-IntelliJ CE has been my only editor while I work on my Rust projects. And over the past few months it has gotten better and better. In this post I want to go over everyday usage and hopefully convince you to give it a try.
+IntelliJ CE has been exclusive Rust editor. And over the past few months it has gotten better and better. While still considered a work in progress it has helped me gain productivity.
+
+In this post I want to go over everyday usage and hopefully convince you to give Intellij and the Rust plugin a try.
 
 Setup
 ---
@@ -56,13 +58,13 @@ Key combos + helpful pointers for IntelliJ
  * `cmd-shift-o`: grep filenames in your project, hit `enter` to open file. Not as fuzzy as Sublime Edit 3, won't tolerate misspellings.
  * `alt-shift` and click: add another caret to the editor. Hit `esc` to leave multi-caret mode. Strictly less powerful than Sublime because you cannot click and drag carets across multiple lines. But can be handy.
  * `ctrl-r`: run your test suite. You'll have to configure your run configurations but there's an easy cargo target. Just set the command to `test` and make sure you click `single instance only`. I highly recommend you click `Show backtrace on panic` which sets the environmental variable `RUST_BACKTRACE=1`. Super handy.
- * `ctrl-shift-r`: run the current test based on your cursor
+ * `ctrl-shift-r`: run the current test based on your cursor (but make sure you select the 'Cargo Test' target when you're done! it won't switch back automatically)
  * `cmd-shift-r`: grep through all the code in your project
  * `cmd-1`/`cmd-4`: toggle project drawer/toggle run drawer
 
-Those key combos are the MVPs. Some of them are a little funky in terms of hand-on-keyboard but I've gotten used to it. The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. One caveat, as with most kitchen sink IDEs: you're best served on a fast machine.
+Those keyboard shortcuts are the MVPs.
 
-The integration with compiler errors is great. I run Rust nightly and the plugin has no problem highlighting errors so you can click and jump to definition. Handy when working through a backlog of compiler errors (which, as you may know, is very common when writing Rust!). Test case
+The integration with compiler errors is great. I run Rust nightly and the plugin has no problem highlighting errors so you can click and jump to definition. Handy when working through a backlog of compiler errors -- which is very common when writing Rust!
 
 Git integration is very workable; there's also built in terminal if you want to skip the wizard-y interface.
 
@@ -75,8 +77,10 @@ Warts
  * `cmd-1`, `cmd-2`, etc are reserved for opening the variety of drawers. I prefer jumping to tabs.
  * Can get lost in the preference. For example, Rust plugin related entries are found in at least two spots.
  * Plugin cannot jump to lines based on backtrace
+ * Keyboard shortcuts could be more ergonomic but I've gotten used to them
 
 In any case
 ---
 
-Hopefully this encourages you to try the Rust integration.
+The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. As with most kitchen sink IDEs: you're best served on a fast machine. I hope you'll try the Rust integration.
+
