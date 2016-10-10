@@ -60,11 +60,11 @@ Key combos + helpful pointers for IntelliJ
  * `cmd-shift-r`: grep through all the code in your project
  * `cmd-1`/`cmd-4`: toggle project drawer/toggle run drawer
 
-Those key combos, for me, are the MVPs. Some of them are a little funky The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. As usual with kitchen sink IDEs: you're well served on a fast machine.
+Those key combos are the MVPs. Some of them are a little funky in terms of hand-on-keyboard but I've gotten used to it. The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. One caveat, as with most kitchen sink IDEs: you're best served on a fast machine.
 
 The integration with compiler errors is great. I run Rust nightly and the plugin has no problem highlighting errors so you can click and jump to definition. Handy when working through a backlog of compiler errors (which, as you may know, is very common when writing Rust!). Test case
 
-Git integration is very workable; there's also built in terminal if 
+Git integration is very workable; there's also built in terminal if you want to skip the wizard-y interface.
 
 Warts
 ---
