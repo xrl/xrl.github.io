@@ -19,7 +19,8 @@ Setup
 ---
 
 You'll want to get the IntelliJ CE (read: free to use) edition. Go to the [jetbrains download page](https://www.jetbrains.com/idea/download/).
-Once you have the base IDE installed you can add the Rust plugin from inside IntelliJ CE (IntelliJ > Preferences > Plugins > Browse Repositores > Search for Rust, click install). Or: [follow the IntelliJ rust's instructions (click "install" for the pop up with actual instructions)](https://intellij-rust.github.io/).
+Once you have the base IDE installed you can add the Rust plugin from inside IntelliJ CE (`IntelliJ > Preferences > Plugins > Browse Repositores`, search for Rust, click install.
+Or: [follow the IntelliJ rust's instructions (click "install" for the pop up with actual instructions)](https://intellij-rust.github.io/).
 
 You will also need to clone down the entire Rust compiler project from github:
 
@@ -39,7 +40,10 @@ creation behaviors common to Rust. The Intellij Rust plugin won't be using that.
 in their own words from [the FAQ](https://intellij-rust.github.io/docs/faq.html):
 
 
-    We would be able to leverage IntelliJ Platform infrastructure for incremental analysis and indexing. With our own analysis we can provide more flexible quick fixes, intentions and typing assistance.
+    We would be able to leverage IntelliJ Platform infrastructure
+    for incremental analysis and indexing. With our own analysis
+    we can provide more flexible quick fixes, intentions and
+    typing assistance.
 
 
 OK, that's fine. If they are offering a more seamless experience with less config then that keeps me closer to what I like about Sublime. I'm not a gear head when it comes to IDEs -- less config is better for me.
