@@ -80,7 +80,7 @@ Warts
  * Sometimes cannot cross crate boundaries. I use a single git repo with two root modules: the library module and my test suite. The rust plugin cannot jump from the test suite to the library.
  * `cmd-1`, `cmd-2`, etc are reserved for opening the variety of drawers. I prefer jumping to tabs.
  * Can get lost in the preference. For example, Rust plugin related entries are found in at least two spots.
- * Plugin cannot jump to lines based on backtrace
+ * Plugin cannot jump to code based on backtrace
  * Keyboard shortcuts could be more ergonomic but I've gotten used to them 
 
 In any case
