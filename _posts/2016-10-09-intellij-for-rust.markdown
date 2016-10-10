@@ -8,7 +8,7 @@ categories: rust
 IntelliJ/Rust are fast becoming buddies
 ---
 
-Most of the time I do everything in Sublime Text 3 -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
+Sublime Text 3 is my go to editor -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
 through my project or jumping to a file based on fuzzy filename matching. But it's good to try new dev environments and the more I write Rust the more I want to
 leverage the type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial ecosystem -- I'm
 going to give the IntelliJ IDE (by Idea Software) a fair shake. It doesn't hurt that IntelliJ is also a respected IDE for Java/Scala and Ruby (among many other supported platforms).
@@ -77,7 +77,7 @@ Warts
 
  * Multi-caret is less useful than Sublime Text. Click and drag is key and IntelliJ requires you to click for each caret.
  * Cannot derive types in situations: loops, iterators, closures. Means you can't jump to definition.
- * Sometimes cannot cross crate boundaries. I use a single git repo with two root modules: the library module and my test suite. The rust plugin cannot jump from the test suite to the library. Fortunately it just disable the hover.
+ * Sometimes cannot cross crate boundaries. I use a single git repo with two root modules: the library module and my test suite. The rust plugin cannot jump from the test suite to the library.
  * `cmd-1`, `cmd-2`, etc are reserved for opening the variety of drawers. I prefer jumping to tabs.
  * Can get lost in the preference. For example, Rust plugin related entries are found in at least two spots.
  * Plugin cannot jump to lines based on backtrace
