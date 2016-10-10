@@ -11,7 +11,7 @@ IntelliJ/Rust are fast becoming buddies
 Sublime Text 3 is my go to editor -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
 through my project or jumping to a file based on fuzzy filename matching. But it's good to try new dev environments and the more I write Rust the more I want to
 leverage the type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial ecosystem -- I'm
-going to give the IntelliJ IDE (by Jetbrains) a fair shake. It doesn't hurt that IntelliJ is also a respected IDE for Java/Scala and Ruby (among many other supported platforms).
+going to give the IntelliJ IDE (by JetBrains) a fair shake. It doesn't hurt that IntelliJ is also a respected IDE for Java/Scala and Ruby (among many other supported platforms).
 
 IntelliJ CE has been my exclusive Rust dev environment. And over the past few months it has gotten better and better. While
 still considered a work in progress it has helped me gain productivity. The plugin manager frequently alerts
