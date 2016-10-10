@@ -11,7 +11,12 @@ IntelliJ/Rust are becoming buddies
 Most of the time I do everything in Sublime Edit 3 -- I like the syntax highlighting, intuitive multi-caret support, and speed of grepping
 through my project or jumping to a file based on fuzzy filename matching. But it's good to try new dev environments and the more I write Rust the more I want to
 leverage the rich type system to be more productive on large projects. And while I'm at it I want to support the Rust commercial support ecosystem: I'm
-giving the IntelliJ IDE (by Idea Software) a full shake. IntelliJ CE has been my only editor while I work on my Rust projects.
+giving the IntelliJ IDE (by Idea Software) a full shake.
+
+IntelliJ CE has been my only editor while I work on my Rust projects. And over the past few months it has gotten better and better. In this post I want to go over everyday usage and hopefully convince you to give it a try.
+
+Setup
+---
 
 You'll want to get the IntelliJ CE (read: free to use) edition. Go to the [jetbrains download page](https://www.jetbrains.com/idea/download/).
 Once you have the base IDE installed you can add the Rust plugin from inside IntelliJ CE (IntelliJ > Preferences > Plugins > Browse Repositores > Search for Rust, click install). Or: [follow the IntelliJ rust's instructions (click "install" for the pop up with actual instructions)](https://intellij-rust.github.io/).
@@ -30,11 +35,12 @@ What about Racer?
 ---
 
 You may have read about Rust's racer project for a common IDE engine, enabling a variety of introspection and code
-creation behaviors common to Rust. We aren't using that. The Idea folks have forged their own path, in their own words from [the FAQ](https://intellij-rust.github.io/docs/faq.html):
+creation behaviors common to Rust. The Intellij Rust plugin won't be using that. The Idea folks have forged their own path,
+in their own words from [the FAQ](https://intellij-rust.github.io/docs/faq.html):
 
-```
-We would be able to leverage IntelliJ Platform infrastructure for incremental analysis and indexing. With our own analysis we can provide more flexible quick fixes, intentions and typing assistance.
-```
+
+    We would be able to leverage IntelliJ Platform infrastructure for incremental analysis and indexing. With our own analysis we can provide more flexible quick fixes, intentions and typing assistance.
+
 
 OK, that's fine. If they are offering a more seamless experience with less config then that keeps me closer to what I like about Sublime. I'm not a gear head when it comes to IDEs -- less config is better for me.
 
