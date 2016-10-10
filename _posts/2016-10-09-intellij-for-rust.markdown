@@ -92,3 +92,4 @@ The usual suspects of code completion, attractive rendering, and mostly-zippy in
 
 [The official project page has way more information](https://intellij-rust.github.io)
 
+[Comment on reddit](https://www.reddit.com/r/rust/comments/56qhvh/intellij_for_rust_trip_report_after_a_few_months/)
