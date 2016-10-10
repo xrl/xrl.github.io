@@ -23,7 +23,7 @@ In this post I want to go over everyday usage and hopefully convince you to give
 Setup
 ---
 
-You'll want to get the IntelliJ CE (read: free to use) edition. Go to the [jetbrains download page](https://www.jetbrains.com/idea/download/).
+You'll want to get the IntelliJ CE (community edition, aka, the free-to-use one). Go to the [jetbrains download page](https://www.jetbrains.com/idea/download/).
 Once you have the base IDE installed you can add the Rust plugin from inside IntelliJ CE (`IntelliJ > Preferences > Plugins > Browse Repositores`, search for Rust, click install.
 Or: [follow the IntelliJ rust's instructions (click "install" for the pop up with actual instructions)](https://intellij-rust.github.io/).
 
@@ -91,3 +91,4 @@ I'm impressed with the open development of the plugin. I highly recommend perusi
 The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. The darcula theme is reminiscent of Sublime Text. As with most kitchen sink IDEs: you're best served on a fast machine. I hope you'll try the Rust integration.
 
 [The official project page has way more information](https://intellij-rust.github.io)
+
