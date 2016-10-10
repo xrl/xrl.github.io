@@ -85,7 +85,7 @@ Warts
 In any case
 ---
 
-I'm impressed with the open development of the plugin. I highly recommend perusing the [tickets](https://github.com/intellij-rust/intellij-rust/issues) to get a feel of what the developers priorities look like.
+I'm impressed with the open development of the plugin. I highly recommend looking at the [tickets](https://github.com/intellij-rust/intellij-rust/issues) to get a feel for the developers priorities.
 
 The usual suspects of code completion, attractive rendering, and mostly-zippy interactions are great. The darcula theme is reminiscent of Sublime Text. As with most kitchen sink IDEs: you're best served on a fast machine. I hope you'll try the Rust integration.
 
