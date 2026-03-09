@@ -575,7 +575,36 @@ Here's what the Pi looks like while streaming a 4K HEVC Dolby Vision episode to 
 | Load average | 0.32 |
 | RAM available | 5.9 GB of 8.1 GB |
 
-The Pi is barely breathing at 97% idle. Jellyfin reports `PlayMethod: Transcode` which sounds alarming, but both video and audio are passed through untouched --- the "transcode" is just a container remux from MKV to MPEG-TS for HLS delivery. No pixels are being re-encoded.
+The Pi isn't breaking a sweat at 97% idle. Jellyfin reports `PlayMethod: Transcode` which sounds alarming, but both video and audio are passed through untouched --- the "transcode" is just a container remux from MKV to MPEG-TS for HLS delivery. No pixels are being re-encoded.
+
+**HLS** ([HTTP Live Streaming](https://en.wikipedia.org/wiki/HTTP_Live_Streaming)) is Apple's adaptive streaming protocol, now an industry standard. Instead of sending the media file as a single download, the server slices it into small `.ts` (MPEG transport stream) segments and serves them over plain HTTP with an `.m3u8` playlist index. The client fetches segments sequentially, buffering a few ahead. This is the same protocol Netflix, Disney+, and YouTube use (or its close relative DASH). It works through any HTTP infrastructure --- CDNs, reverse proxies, caches --- without special streaming servers.
+
+Jellyfin uses ffmpeg's `-hls_time` flag to control segment duration. For direct play (codec copy), the segments in my setup are **1 second** each, roughly **2.9 MB** at this bitrate. For software transcodes, Jellyfin uses 3-second segments. The short segment duration keeps seek latency low --- when you skip ahead, the TV only needs to wait for the next 1-second chunk, not buffer a larger segment.
+
+<details markdown="1">
+<summary><strong>What an HLS playlist looks like (click to expand)</strong></summary>
+
+The `.m3u8` playlist is a plain text file that the TV fetches first. It lists every segment with its duration:
+
+```
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:2
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXTINF:1.001000,
+34abd5c3007c00ec6f1ee2fb3a49983a0.ts
+#EXTINF:1.001000,
+34abd5c3007c00ec6f1ee2fb3a49983a1.ts
+#EXTINF:1.001000,
+34abd5c3007c00ec6f1ee2fb3a49983a2.ts
+... ~2,700 entries for a 45-minute episode ...
+#EXT-X-ENDLIST
+```
+
+Each `#EXTINF` line gives the segment duration (1.001 seconds), followed by the `.ts` filename. The filenames are relative URLs resolved against the Jellyfin server base URL. The TV requests each segment sequentially over HTTP as playback advances. The playlist itself is a few hundred KB of text; the media data is in the `.ts` files.
+
+</details>
 
 The delivery path: the TV's Jellyfin app requests HLS segments over plain **HTTP** from `rpi.local`. Traefik (the K3s ingress) reverse-proxies the request to the Jellyfin pod, which reads the MKV file, remuxes each chunk into a `.ts` segment, and sends it back. The TV's hardware decoder handles HEVC, Dolby Vision, and DD+ natively.
 
