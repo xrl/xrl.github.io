@@ -189,6 +189,43 @@ pre {
 
 
 /**
+ * Tables
+ */
+table {
+    width: 100%;
+    margin-bottom: $spacing-unit / 2;
+    border-collapse: collapse;
+    font-size: $small-font-size;
+
+    th, td {
+        padding: 8px 12px;
+        border: 1px solid $grey-color-light;
+        text-align: left;
+    }
+
+    th {
+        background-color: #f0f0f5;
+        font-weight: 600;
+        border-bottom: 2px solid darken($grey-color-light, 10%);
+    }
+
+    tr:nth-child(even) td {
+        background-color: #fafafa;
+    }
+
+    tr:hover td {
+        background-color: #f0f4ff;
+    }
+
+    td:first-child {
+        font-weight: 500;
+        white-space: nowrap;
+    }
+}
+
+
+
+/**
  * Icons
  */
 .icon {
