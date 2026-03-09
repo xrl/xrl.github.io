@@ -22,6 +22,20 @@ A few weekends ago I sat down with [Claude Code](https://claude.com/claude-code)
 #slide1:checked ~ .nav label[for="slide1"],
 #slide2:checked ~ .nav label[for="slide2"],
 #slide3:checked ~ .nav label[for="slide3"] { background: #00b4d8; }
+.carousel .arrows { position: absolute; top: 0; left: 0; right: 0; bottom: 40px; pointer-events: none; }
+.carousel .arrows label { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; cursor: pointer; pointer-events: auto; display: none; font-size: 0; line-height: 40px; text-align: center; background: rgba(0,0,0,0.4); border-radius: 50%; transition: background 0.2s; }
+.carousel .arrows label:hover { background: rgba(0,180,216,0.7); }
+.carousel .arrows label::after { content: ''; display: block; position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; border-top: 2.5px solid #fff; border-right: 2.5px solid #fff; }
+.carousel .arrows .prev { left: 10px; }
+.carousel .arrows .next { right: 10px; }
+.carousel .arrows .prev::after { transform: translate(-30%, -50%) rotate(-135deg); }
+.carousel .arrows .next::after { transform: translate(-70%, -50%) rotate(45deg); }
+#slide1:checked ~ .arrows .prev[for="slide3"],
+#slide1:checked ~ .arrows .next[for="slide2"],
+#slide2:checked ~ .arrows .prev[for="slide1"],
+#slide2:checked ~ .arrows .next[for="slide3"],
+#slide3:checked ~ .arrows .prev[for="slide2"],
+#slide3:checked ~ .arrows .next[for="slide1"] { display: block; }
 </style>
 
 <div class="carousel">
@@ -41,6 +55,14 @@ A few weekends ago I sat down with [Claude Code](https://claude.com/claude-code)
       <img src="/images/rpi-homelab/jellyfin.png" alt="Jellyfin media server home screen with Movies and TV Shows">
       <figcaption>Jellyfin --- media library with Movies and TV Shows, ready to stream</figcaption>
     </figure>
+  </div>
+  <div class="arrows">
+    <label for="slide3" class="prev"></label>
+    <label for="slide2" class="next"></label>
+    <label for="slide1" class="prev"></label>
+    <label for="slide3" class="next"></label>
+    <label for="slide2" class="prev"></label>
+    <label for="slide1" class="next"></label>
   </div>
   <div class="nav">
     <label for="slide1"></label>
