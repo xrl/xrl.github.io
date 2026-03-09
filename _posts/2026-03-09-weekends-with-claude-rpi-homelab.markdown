@@ -686,6 +686,19 @@ For anyone building something similar, here's the complete stack:
 
 Total cost: ~$170 for the hardware (CanaKit starter kit). Everything else is open source.
 
+## P.S. --- there are faster boards
+
+If raw performance is what you're after, the Pi 5 is not the best single-board computer for a homelab in 2026. Not even close:
+
+- **[Orange Pi 5 Plus](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-plus.html)** --- Rockchip RK3588, eight cores (4x A76 + 4x A55), dual 2.5 GbE, PCIe 3.0 x4 NVMe. Storage throughput alone is ~7x the Pi 5's PCIe 2.0 x1.
+- **[ZimaBoard 2](https://www.zimaspace.com/products/single-board-server)** --- Intel N150, dual 2.5 GbE, dual SATA, PCIe 3.0 x4, up to 16 GB LPDDR5x. x86 means you can run TrueNAS or unRAID without ARM quirks.
+- **[ODROID-H3+](https://www.hardkernel.com/shop/odroid-h3-plus/)** --- Intel N5105, dual SATA, dual 2.5 GbE, up to 64 GB RAM. The go-to for serious NAS builds.
+- **[LattePanda Sigma](https://www.lattepanda.com/lattepanda-sigma)** --- Intel Core i5-1340P, full x86-64 desktop-class performance. Overkill for a media server, but it exists.
+
+Any of these would eliminate the microSD bottleneck that caused most of my pain. The ODROID and ZimaBoard in particular would let you run NVMe + SATA drives and never think about I/O priority again.
+
+But I have a soft spot for the Raspberry Pi. Back in 2013 I worked at a startup called Fanpics, where we used first-generation Pis as photo booth controllers at live events. The company didn't survive, but the Pis were bulletproof. There's something about the platform --- the community, the documentation, the sheer volume of people who've solved your exact problem before you --- that makes it uniquely approachable. Raspberry Pi OS is a proper Debian distribution with first-party kernel support, and it just works in a way that some of the alternatives (with their BSP kernels and sparse docs) don't always match. For a weekend project where I wanted to focus on the software stack rather than fighting hardware compatibility, the Pi was the right call.
+
 ---
 
 *This post was co-authored with [Claude Code](https://claude.com/claude-code), which also helped build and debug the homelab itself. The repo is private for now but the structure and approach are fully described above.*
