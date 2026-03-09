@@ -461,9 +461,9 @@ During active Usenet downloads (SABnzbd pulling three 4K episodes simultaneously
 
 The CPU is mostly idle, but 16% of its time is spent in **I/O wait** --- threads blocked waiting on the microSD. The load average of 6.77 on 4 cores looks alarming but is inflated by I/O-blocked threads, not actual CPU saturation.
 
-Disk writes (25.9 MB/s) exceed network ingest (11 MB/s) because SABnzbd is simultaneously downloading, verifying par2 checksums, and writing decompressed data. The WiFi chip is pulling 88 Mbps, close to the practical ceiling for 802.11ac in a home environment.
+Disk writes (25.9 MB/s) exceed network ingest (11 MB/s) because SABnzbd's pipeline is serialized: it downloads, *then* verifies par2 checksums, *then* decompresses --- never overlapping stages. With `direct_unpack = 0` and `safe_postproc = 1`, the microSD only handles one type of I/O at a time. The write amplification comes from SABnzbd's article cache (`cache_limit = 1G`) flushing to disk in bursts while the download stream continues filling it. The WiFi chip is pulling 88 Mbps, close to the practical ceiling for 802.11ac in a home environment.
 
-This is the workload that drove all the `ionice` tuning --- without I/O priority, a download storm like this would starve Jellyfin's read path and cause buffering during playback.
+This is the workload that drove all the `ionice` tuning --- without I/O priority, even a single-stage workload like downloading can starve Jellyfin's read path and cause buffering during playback.
 
 ## Ups and downs
 
@@ -511,7 +511,7 @@ Then: **95% I/O wait.** SABnzbd was running two `unrar` processes simultaneously
 
 ### Saturday afternoon: taming the I/O beast
 
-**12:12 PM --- Disable direct unpack.** SABnzbd's "direct unpack" feature starts extracting files while still downloading. On a microSD card this creates a devastating read/write storm. Disabled it and dropped unpack threads to 1.
+**12:12 PM --- Disable direct unpack.** SABnzbd's "direct unpack" feature starts extracting files while still downloading. On a microSD card this creates a devastating read/write storm --- simultaneous reads and writes from different stages competing for the same slow storage. Disabled it (`direct_unpack = 0`) and enabled `safe_postproc` so SABnzbd strictly serializes its pipeline: download, then par2 verify, then unrar. One stage at a time. Also dropped unpack threads to 1.
 
 **12:24 PM --- SABnzbd OOM killed.** The Python process plus `unrar` exceeded the 1 GB memory limit. Kubernetes killed the container. Bumped the limit to 2 GB.
 
