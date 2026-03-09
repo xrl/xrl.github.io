@@ -560,16 +560,26 @@ The practical impact: most content from Usenet and streaming-era sources is HEVC
 
 ### Performance: what the Pi actually does during playback
 
-With Jellyfin direct-playing a 4K HEVC Dolby Vision stream to the LG C2, the Pi is barely working:
+Here's what the Pi looks like while streaming a 4K HEVC Dolby Vision episode to the LG C2:
 
-| Metric | Idle | Streaming 4K |
-|--------|------|-------------|
-| CPU idle | ~95% | ~93% |
-| Load avg | <1.0 | ~1.1 |
-| Jellyfin RAM | 465 MB | 465 MB |
-| Available RAM | 6.0 GB | 6.0 GB |
+| Metric | Value |
+|--------|-------|
+| Video | HEVC Main 10, 3840x2160, 13.6 Mbps (direct, no transcode) |
+| Audio | Dolby Digital+ 5.1, 256 kbps (direct, no transcode) |
+| Total bitrate | 23.5 Mbps |
+| Container | MKV remuxed to MPEG-TS (HLS segments) |
+| Protocol | HTTP via Traefik reverse proxy |
+| WiFi TX | 2.1 MB/s (17.6 Mbps) |
+| CPU | 97% idle, 2% user, 1% system, 0% I/O wait |
+| Disk read | 0 MB/s (file cached in Linux page cache) |
+| Load average | 0.32 |
+| RAM available | 5.9 GB of 8.1 GB |
 
-The Pi is essentially acting as a wireless NAS --- reading a file from the SD card and pushing it over WiFi. The CPU barely registers the load. 4K streams typically peak around 80-120 Mbps (10-15 MB/s), well within the CYW43455's 802.11ac throughput. The bottleneck, if anything, is the microSD's sequential read speed, which at ~90 MB/s is still plenty.
+The Pi is barely breathing at 97% idle. Jellyfin reports `PlayMethod: Transcode` which sounds alarming, but both video and audio are passed through untouched --- the "transcode" is just a container remux from MKV to MPEG-TS for HLS delivery. No pixels are being re-encoded.
+
+The delivery path: the TV's Jellyfin app requests HLS segments over plain **HTTP** from `rpi.local`. Traefik (the K3s ingress) reverse-proxies the request to the Jellyfin pod, which reads the MKV file, remuxes each chunk into a `.ts` segment, and sends it back. The TV's hardware decoder handles HEVC, Dolby Vision, and DD+ natively.
+
+The disk read of 0 MB/s is real --- this episode was recently downloaded, so Linux's page cache is serving it entirely from RAM. On a cold cache, you'd see ~2-3 MB/s of sequential reads from the microSD, which is still trivial. The CYW43455 WiFi chip is pushing 17.6 Mbps of the file's 23.5 Mbps bitrate (the difference is protocol overhead and buffering). A single 4K stream barely dents the Pi's resources.
 
 ### Performance: what the Pi does during active downloads
 
