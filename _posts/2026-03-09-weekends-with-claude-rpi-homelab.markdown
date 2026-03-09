@@ -506,7 +506,7 @@ The LG C2 covers the codecs that matter. LG paid the licensing fees to Dolby, so
 - **HDR10** and **HLG**
 - **Dolby Digital Plus** and **Dolby Atmos** (via eARC or the built-in decoder)
 
-The [Jellyfin webOS app](https://github.com/jellyfin/jellyfin-webos) is a lightweight wrapper around Jellyfin's web interface. It implements a `NativeShell` bridge that reports the TV's codec capabilities back to the Jellyfin server. When the server sees that the client supports HEVC, Dolby Vision, and DD+ natively, it skips transcoding entirely and sends the raw file.
+The [Jellyfin webOS app](https://github.com/jellyfin/jellyfin-webos) is a wrapper around Jellyfin's web interface, weighing in at [248.7 KB](https://us.lgappstv.com/main/tvapp/detail?appId=1030579) according to LG's app store listing. It implements a `NativeShell` bridge that reports the TV's codec capabilities back to the Jellyfin server. When the server sees that the client supports HEVC, Dolby Vision, and DD+ natively, it skips transcoding entirely and sends the raw file.
 
 Under the hood, the app uses the TV's HTML5 video element for playback. The webOS platform routes the video bitstream to the TV's hardware decoder, so the video and HDR metadata are passed through without modification.
 
