@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Weekends With Claude: RPi Homelab"
-date:   2026-03-09 12:00:00 -0700
+date:   2026-03-08 21:00:00 -0700
 categories: homelab
 ---
 
