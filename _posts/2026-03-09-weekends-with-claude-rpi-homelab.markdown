@@ -699,7 +699,7 @@ If raw performance is what you're after, the Pi 5 is not the best single-board c
 
 Any of these would eliminate the microSD bottleneck that caused most of my pain. The ODROID and ZimaBoard in particular would let you run NVMe + SATA drives and never think about I/O priority again.
 
-But I have a soft spot for the Raspberry Pi. Back in 2013 I worked at a startup called Fanpics, where we used first-generation Pis as photo booth controllers at live events. The company didn't survive, but the Pis were bulletproof. There's something about the platform --- the community, the documentation, the sheer volume of people who've solved your exact problem before you --- that makes it uniquely approachable. Raspberry Pi OS is a proper Debian distribution with first-party kernel support, and it just works in a way that some of the alternatives (with their BSP kernels and sparse docs) don't always match. For a weekend project where I wanted to focus on the software stack rather than fighting hardware compatibility, the Pi was the right call.
+I've used Pis since the first generation (photo booth controllers at a startup called Fanpics, circa 2013). I picked it again because it's low drama: proper Debian, first-party kernel, no BSP builds, no worrying the vendor disappears in two years. I wanted to focus on the software stack, not fight hardware compatibility.
 
 ---
 
