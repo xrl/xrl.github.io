@@ -5,7 +5,7 @@ date:   2026-03-08 21:00:00 -0700
 categories: homelab
 ---
 
-I bought a Raspberry Pi 5 a while back with vague plans of "doing something cool with it." It sat in a drawer for months. Then one weekend I realized [Claude Code](https://claude.com/claude-code) could help me crank through what I'd always wanted: a homelab done *right* --- not hacked together with shell scripts, but built with the same tools I use at work. Kubernetes, GitOps, infrastructure as code, the whole stack. So I sat down and built it. The goal: a self-hosted media server that streams 4K Dolby Vision to my LG TV, managed entirely through Git. This post walks through every layer, from flashing the SD card to watching movies.
+I bought a Raspberry Pi 5 a while back with vague plans of "doing something cool with it." It sat in a drawer for months. Then [Claude Code](https://claude.com/claude-code) came along and eliminated the excuse. I could build it the way I'd build it at work --- Kubernetes, Argo CD, infrastructure as code --- without spending a month on it. The goal: a self-hosted media server that streams 4K Dolby Vision to my LG TV, managed entirely through Git. This post walks through every layer, from flashing the SD card to watching movies.
 
 <style>
 .toc { background: #f8f8fc; border: 1px solid #e0e0e8; border-radius: 6px; padding: 1em 1.5em; margin: 1.5em 0; font-size: 0.9em; }
