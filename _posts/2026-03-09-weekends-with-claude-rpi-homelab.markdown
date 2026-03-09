@@ -443,6 +443,28 @@ With Jellyfin direct-playing a 4K HEVC Dolby Vision stream to the LG C2, the Pi 
 
 The Pi is essentially acting as a wireless NAS --- reading a file from the SD card and pushing it over WiFi. The CPU barely registers the load. 4K streams typically peak around 80-120 Mbps (10-15 MB/s), well within the CYW43455's 802.11ac throughput. The bottleneck, if anything, is the microSD's sequential read speed, which at ~90 MB/s is still plenty.
 
+### Performance: what the Pi does during active downloads
+
+During active Usenet downloads (SABnzbd pulling three 4K episodes simultaneously), the picture changes --- the microSD becomes the star of the show:
+
+| Metric | Value |
+|--------|-------|
+| CPU idle | 65.8% |
+| CPU iowait | 16.1% |
+| CPU user + system | 15.1% |
+| Load avg (1/5/15m) | 6.77 / 3.53 / 2.04 |
+| WiFi RX | 11 MB/s (88 Mbps) |
+| Disk write | 25.9 MB/s |
+| SABnzbd RAM | 230 MB |
+| Jellyfin RAM (idle) | 595 MB |
+| Available RAM | 5.7 GB of 8.1 GB |
+
+The CPU is mostly idle, but 16% of its time is spent in **I/O wait** --- threads blocked waiting on the microSD. The load average of 6.77 on 4 cores looks alarming but is inflated by I/O-blocked threads, not actual CPU saturation.
+
+Disk writes (25.9 MB/s) exceed network ingest (11 MB/s) because SABnzbd is simultaneously downloading, verifying par2 checksums, and writing decompressed data. The WiFi chip is pulling 88 Mbps, close to the practical ceiling for 802.11ac in a home environment.
+
+This is the workload that drove all the `ionice` tuning --- without I/O priority, a download storm like this would starve Jellyfin's read path and cause buffering during playback.
+
 ## Ups and downs
 
 The entire homelab was built in a single day --- a Friday night session and a Saturday afternoon. Here's the timeline, including the things that went wrong.
