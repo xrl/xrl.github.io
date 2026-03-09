@@ -169,7 +169,7 @@ The corporate structure is unusual. The **Raspberry Pi Foundation** is a UK educ
 
 The 8 GB Pi 5 I'm using launched at $80. As of early 2026, memory cost inflation from AI infrastructure demand has pushed prices up --- the 8 GB model is around $95, and the 16 GB model has climbed to $205. A 1 GB model was introduced at $45 for folks who just need a lightweight Linux box.
 
-I bought the [CanaKit Raspberry Pi 5 Starter Kit - Aluminum](https://www.canakit.com/canakit-raspberry-pi-5-starter-kit-aluminum.html) for $170 (+ $22 shipping). The kit includes the Pi 5 8 GB board, a 128 GB microSD card pre-loaded with Raspberry Pi OS, a USB-C power supply, an aluminum case that doubles as a passive heatsink (with an Arctic thermal pad transferring heat from the CPU to the case --- no fan needed), two micro-HDMI cables, and a USB card reader.
+I bought the [CanaKit Raspberry Pi 5 Starter Kit - Aluminum](https://www.canakit.com/canakit-raspberry-pi-5-starter-kit-aluminum.html) in February 2024 for $169.95 (+ $21.95 shipping --- $191.90 total). It sat in a drawer for two years before this project. The kit includes the Pi 5 8 GB board, a 128 GB microSD card pre-loaded with Raspberry Pi OS, a USB-C power supply, an aluminum case that doubles as a passive heatsink (with an Arctic thermal pad transferring heat from the CPU to the case --- no fan needed), two micro-HDMI cables, and a USB card reader.
 
 ## Flashing the OS
 
@@ -543,7 +543,7 @@ If you've ever tried to play a 4K Dolby Vision file in VLC on a Mac, you've prob
 
 There's no software fix. Dolby Vision is a closed ecosystem: you need licensed silicon to decode it. Apple's own apps (Apple TV, Safari) handle it because Apple pays Dolby, but third-party players like VLC and mpv are out of luck.
 
-With the LG + Jellyfin setup, this is a non-issue. The TV has the Dolby hardware. Jellyfin just serves the file. You get perfect 4K Dolby Vision playback from a $170 server.
+With the LG + Jellyfin setup, this is a non-issue. The TV has the Dolby hardware. Jellyfin just serves the file. You get perfect 4K Dolby Vision playback from a $192 server.
 
 ### What won't play: the direct-play-or-nothing tradeoff
 
@@ -696,7 +696,7 @@ For anyone building something similar, here's the complete stack:
 | Media server | Jellyfin |
 | Client | Jellyfin webOS app on LG C2 OLED |
 
-Total cost: ~$170 for the hardware (CanaKit starter kit). Everything else is open source.
+Total cost: $191.90 for the hardware (CanaKit starter kit, shipped). Everything else is open source.
 
 ## P.S. --- there are faster boards
 
