@@ -5,7 +5,7 @@ date:   2026-03-08 21:00:00 -0700
 categories: homelab
 ---
 
-I bought a Raspberry Pi 5 a while back with vague plans of "doing something cool with it." It sat in a drawer for months. My original idea was naive: plug the Pi into my TV over HDMI and write some kind of homemade Rust thing to play media. I had no idea that the TV itself had hardware decoders for HEVC and Dolby Vision, or that something like Jellyfin could leverage them over the network. Then [Claude Code](https://claude.com/claude-code) came along and eliminated the excuse. I could build it the way I'd build it at work --- Kubernetes, Argo CD, infrastructure as code --- without spending a month on it. The goal: a self-hosted media server that streams 4K Dolby Vision to my LG TV, managed entirely through Git. This post walks through every layer, from flashing the SD card to watching movies.
+I bought a Raspberry Pi 5 in 2024 and it sat in a drawer for two years. My plan was HDMI-out with some homemade Rust media player --- I didn't know the TV had its own hardware decoders, or that Jellyfin could stream to them over the network. Kubernetes, Argo CD, infrastructure as code, hacked up in a weekend. This post walks through the whole stack, from flashing the SD card to streaming 4K Dolby Vision.
 
 <style>
 .toc { background: #f8f8fc; border: 1px solid #e0e0e8; border-radius: 6px; padding: 1em 1.5em; margin: 1.5em 0; font-size: 0.9em; }
