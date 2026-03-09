@@ -8,6 +8,77 @@ categories: homelab
 I bought a Raspberry Pi 5 a while back with vague plans of "doing something cool with it." It sat in a drawer for months. Then one weekend I realized [Claude Code](https://claude.com/claude-code) could help me crank through what I'd always wanted: a homelab done *right* --- not hacked together with shell scripts, but built with the same tools I use at work. Kubernetes, GitOps, infrastructure as code, the whole stack. So I sat down and built it. The goal: a self-hosted media server that streams 4K Dolby Vision to my LG TV, managed entirely through Git. This post walks through every layer, from flashing the SD card to watching movies.
 
 <style>
+.toc { background: #f8f8fc; border: 1px solid #e0e0e8; border-radius: 6px; padding: 1em 1.5em; margin: 1.5em 0; font-size: 0.9em; }
+.toc summary { font-weight: 600; cursor: pointer; color: #333; }
+.toc ul { margin: 0.5em 0 0 1.2em; padding: 0; list-style: none; }
+.toc > ul { margin-left: 0; }
+.toc li { margin: 0.25em 0; }
+.toc li::before { content: ""; }
+.toc a { color: #2a7ae2; text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+.toc ul ul { margin-left: 1.2em; font-size: 0.95em; color: #555; }
+</style>
+
+<details class="toc" open>
+<summary>Table of contents</summary>
+<ul>
+<li><a href="#what-is-a-homelab">What is a homelab?</a></li>
+<li><a href="#the-raspberry-pi-5">The Raspberry Pi 5</a>
+  <ul>
+  <li><a href="#who-makes-the-pi">Who makes the Pi?</a></li>
+  <li><a href="#how-much-does-it-cost">How much does it cost?</a></li>
+  </ul>
+</li>
+<li><a href="#flashing-the-os">Flashing the OS</a>
+  <ul>
+  <li><a href="#cloud-init-headless-first-boot">cloud-init: headless first boot</a></li>
+  <li><a href="#wifi-credentials-the-network-config-file">WiFi credentials: the network-config file</a></li>
+  </ul>
+</li>
+<li><a href="#mdns-making-rpilocal-work">mDNS: making rpi.local work</a></li>
+<li><a href="#k3s-kubernetes-on-the-pi">K3s: Kubernetes on the Pi</a>
+  <ul>
+  <li><a href="#k3s-config">k3s config</a></li>
+  <li><a href="#remote-kubectl">Remote kubectl</a></li>
+  </ul>
+</li>
+<li><a href="#argo-cd-gitops-for-the-homelab">Argo CD: GitOps for the homelab</a>
+  <ul>
+  <li><a href="#the-app-of-apps-pattern">The app-of-apps pattern</a></li>
+  <li><a href="#how-argo-cd-pulls-from-github">How Argo CD pulls from GitHub</a></li>
+  <li><a href="#repo-structure">Repo structure</a></li>
+  </ul>
+</li>
+<li><a href="#sabnzbd-the-stateful-config-problem">SABnzbd: the stateful config problem</a>
+  <ul>
+  <li><a href="#post-processing-wiring-sabnzbd-to-jellyfin">Post-processing: wiring SABnzbd to Jellyfin</a></li>
+  </ul>
+</li>
+<li><a href="#jellyfin--lg-tv-the-direct-play-sweet-spot">Jellyfin + LG TV: the direct play sweet spot</a>
+  <ul>
+  <li><a href="#the-lg-c2-and-jellyfins-webos-app">The LG C2 and Jellyfin's WebOS app</a></li>
+  <li><a href="#inside-the-jellyfin-webos-app">Inside the Jellyfin webOS app</a></li>
+  <li><a href="#webos-how-an-open-source-app-runs-on-your-tv">webOS: how an open-source app runs on your TV</a></li>
+  <li><a href="#why-this-matters-the-macos-hdr-problem">Why this matters: the macOS HDR problem</a></li>
+  <li><a href="#what-wont-play-the-direct-play-or-nothing-tradeoff">What won't play: the direct-play-or-nothing tradeoff</a></li>
+  <li><a href="#performance-what-the-pi-actually-does-during-playback">Performance: what the Pi actually does during playback</a></li>
+  <li><a href="#performance-what-the-pi-does-during-active-downloads">Performance: what the Pi does during active downloads</a></li>
+  </ul>
+</li>
+<li><a href="#ups-and-downs">Ups and downs</a>
+  <ul>
+  <li><a href="#friday-night-standing-it-up">Friday night: standing it up</a></li>
+  <li><a href="#saturday-morning-the-wheels-come-off">Saturday morning: the wheels come off</a></li>
+  <li><a href="#saturday-afternoon-taming-the-io-beast">Saturday afternoon: taming the I/O beast</a></li>
+  <li><a href="#the-pattern">The pattern</a></li>
+  </ul>
+</li>
+<li><a href="#lessons-learned">Lessons learned</a></li>
+<li><a href="#the-stack">The stack</a></li>
+</ul>
+</details>
+
+<style>
 .carousel { position: relative; max-width: 100%; overflow: hidden; border-radius: 8px; margin: 1.5em 0; background: #1a1a2e; }
 .carousel input[type="radio"] { display: none; }
 .carousel .slides { display: flex; transition: transform 0.4s ease; }
