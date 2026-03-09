@@ -117,7 +117,7 @@ I bought a Raspberry Pi 5 in 2024 and it sat in a drawer for two years. My plan 
     </figure>
     <figure class="slide">
       <img src="/images/rpi-homelab/jellyfin.png" alt="Jellyfin media server home screen with Movies and TV Shows">
-      <figcaption>Jellyfin --- media library with Movies and TV Shows, ready to stream</figcaption>
+      <figcaption>Jellyfin --- media library with Movies and TV Shows</figcaption>
     </figure>
   </div>
   <div class="arrows">
@@ -306,7 +306,7 @@ No SSH needed for day-to-day operations.
 
 [Argo CD](https://argo-cd.readthedocs.io/) is a Kubernetes-native continuous delivery tool. You declare your desired cluster state in a Git repository, and Argo CD continuously reconciles the cluster to match. Push a commit, and your cluster updates automatically.
 
-For a homelab this is overkill in the best way. Every configuration change is version-controlled. If you break something, `git revert` fixes it. You never have to remember what you `kubectl apply`'d three weeks ago.
+For a homelab this is more infrastructure than you strictly need, but relatively future proof. Every configuration change is version-controlled. If you break something, `git revert` fixes it. You never have to remember what you `kubectl apply`'d three weeks ago.
 
 I install Argo CD via its official Helm chart, slimmed down for the Pi:
 
@@ -499,7 +499,7 @@ This means **direct play is essential**. The server sends the file as-is to the 
 
 ### The LG C2 and Jellyfin's WebOS app
 
-This is where the LG C2 OLED shines. LG paid the licensing fees to Dolby, so the TV natively decodes:
+The LG C2 covers the codecs that matter. LG paid the licensing fees to Dolby, so the TV natively decodes:
 
 - **HEVC** (H.265) up to 4K@120fps
 - **Dolby Vision** Profile 8 (the streaming profile)
@@ -508,7 +508,7 @@ This is where the LG C2 OLED shines. LG paid the licensing fees to Dolby, so the
 
 The [Jellyfin webOS app](https://github.com/jellyfin/jellyfin-webos) is a lightweight wrapper around Jellyfin's web interface. It implements a `NativeShell` bridge that reports the TV's codec capabilities back to the Jellyfin server. When the server sees that the client supports HEVC, Dolby Vision, and DD+ natively, it skips transcoding entirely and sends the raw file.
 
-Under the hood, the app uses the TV's HTML5 video element for playback. The webOS platform routes the video bitstream to the TV's hardware decoder --- the same silicon that decodes Netflix and Disney+. The result is bit-perfect playback with full HDR metadata, exactly as the content was mastered.
+Under the hood, the app uses the TV's HTML5 video element for playback. The webOS platform routes the video bitstream to the TV's hardware decoder, so the video and HDR metadata are passed through without modification.
 
 ### Inside the Jellyfin webOS app
 
@@ -520,7 +520,7 @@ The ES5 constraint in the webOS shell is deliberate: older webOS versions ship a
 
 ### webOS: how an open-source app runs on your TV
 
-LG has shipped webOS on every smart TV since 2014. The platform has its roots in Palm's mobile OS (remember the Palm Pre?), which HP open-sourced in 2012 before [selling it to LG in 2013](https://en.wikipedia.org/wiki/WebOS). LG repurposed it as a TV platform, and in 2018 released an [open-source edition](https://www.webosose.org/) of the core OS.
+LG has shipped webOS on every smart TV since 2014. The platform has its roots in Palm's mobile OS, a contemporary of the original iPhone, which HP open-sourced in 2012 before [selling it to LG in 2013](https://en.wikipedia.org/wiki/WebOS). LG repurposed it as a TV platform, and in 2018 released an [open-source edition](https://www.webosose.org/) of the core OS.
 
 | webOS version | TV model year |
 |---------------|---------------|
@@ -535,7 +535,7 @@ LG has shipped webOS on every smart TV since 2014. The platform has its roots in
 
 The developer story improved over time. LG's [Developer Mode app](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app) lets you sideload `.ipk` packages onto your TV after registering a free LG developer account. The session lasts 1,000 hours before needing renewal. The [webOS Homebrew Project](https://www.webosbrew.org/) community has pushed this further with persistent sideloading and a homebrew app store via the [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
 
-Jellyfin first landed in the LG Content Store in [July 2022](https://jellyfin.org/posts/webos-july2022/), initially for webOS 6+ (2021 TVs and newer). Older TVs required sideloading through Developer Mode. Since then, LG has approved the app for the Content Store on all webOS versions back to 1.2, meaning it's now a one-click install on LG TVs as far back as **2014**. That's unusual reach for an open-source, community-built app running on a consumer TV platform --- and it works because webOS has always been a web-first OS under the hood. The same HTML5/CSS/JavaScript stack that powers Netflix and YouTube on these TVs powers Jellyfin.
+Jellyfin first landed in the LG Content Store in [July 2022](https://jellyfin.org/posts/webos-july2022/), initially for webOS 6+ (2021 TVs and newer). Older TVs required sideloading through Developer Mode. Since then, LG has approved the app for the Content Store on all webOS versions back to 1.2, meaning it's now a one-click install on LG TVs as far back as **2014**. This is possible because webOS has always been a web-first platform --- the same HTML5/CSS/JavaScript runtime that runs Netflix and YouTube runs Jellyfin.
 
 ### Why this matters: the macOS HDR problem
 
@@ -543,7 +543,7 @@ If you've ever tried to play a 4K Dolby Vision file in VLC on a Mac, you've prob
 
 There's no software fix. Dolby Vision is a closed ecosystem: you need licensed silicon to decode it. Apple's own apps (Apple TV, Safari) handle it because Apple pays Dolby, but third-party players like VLC and mpv are out of luck.
 
-With the LG + Jellyfin setup, this is a non-issue. The TV has the Dolby hardware. Jellyfin just serves the file. You get perfect 4K Dolby Vision playback from a $192 server.
+With the LG + Jellyfin setup, this doesn't come up. The TV has the Dolby hardware; Jellyfin just serves the file.
 
 ### What won't play: the direct-play-or-nothing tradeoff
 
