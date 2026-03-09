@@ -17,3 +17,5 @@ github_username:  xrl
 
 # Build settings
 markdown: kramdown
+exclude:
+  - bak
