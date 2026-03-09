@@ -63,12 +63,12 @@ Here's what's inside the board:
 
 | Component | Detail |
 |-----------|--------|
-| SoC | Broadcom BCM2712 --- quad-core ARM Cortex-A76 at 2.4 GHz, 16nm process |
+| SoC | Broadcom BCM2712 &mdash; quad-core ARM Cortex-A76 at 2.4 GHz, 16nm process |
 | RAM | 8 GB LPDDR4X |
-| I/O Controller | RP1 --- Raspberry Pi's in-house "southbridge" chip |
+| I/O Controller | RP1 &mdash; Raspberry Pi's in-house "southbridge" chip |
 | GPU | VideoCore VII (12-core) with hardware HEVC decoder |
 | Storage | 128 GB microSD |
-| WiFi | Infineon CYW43455 --- dual-band 802.11ac (2.4/5 GHz) |
+| WiFi | Infineon CYW43455 &mdash; dual-band 802.11ac (2.4/5 GHz) |
 | Networking | Gigabit Ethernet (via RP1), but I use WiFi |
 
 The **BCM2712** is designed by [Broadcom](https://www.broadcom.com/), the same company that's supplied the SoC for every Pi generation. Broadcom designs the ARM CPU cores under license from Arm Holdings and fabricates the chip at TSMC. The Cortex-A76 cores have 512 KB L2 caches each and share a 2 MB L3 cache.
