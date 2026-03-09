@@ -365,7 +365,7 @@ The bootstrap flow: run `argocd/install.sh` once. It installs the Argo CD Helm r
 
 ## SABnzbd: the stateful config problem
 
-[SABnzbd](https://sabnzbd.org/) is a Usenet download client. It's a Python application with a web UI where users tweak dozens of settings: server credentials, download categories, RSS feeds, bandwidth limits, post-processing options. The config is a single `sabnzbd.ini` file that SABnzbd reads on startup and writes to continuously as you change settings in the UI.
+[SABnzbd](https://sabnzbd.org/) is a Usenet download client written in **Python**, using [CherryPy](https://cherrypy.dev/) as its embedded HTTP server and Jinja2 for templating. CherryPy gives SABnzbd a self-contained web server --- no Apache or nginx needed. The web UI (themed "Glitter") lets users tweak dozens of settings: server credentials, download categories, RSS feeds, bandwidth limits, post-processing options. The config is a single `sabnzbd.ini` file that SABnzbd reads on startup and writes to continuously as you change settings in the UI.
 
 This is at odds with GitOps, where configuration should be declarative and immutable. If Argo CD overwrites `sabnzbd.ini` on every sync, any setting you changed in the UI gets blown away.
 
@@ -425,7 +425,7 @@ Note the Kubernetes service DNS: `jellyfin.jellyfin.svc.cluster.local`. SABnzbd 
 
 ## Jellyfin + LG TV: the direct play sweet spot
 
-[Jellyfin](https://jellyfin.org/) is an open-source media server, a free alternative to Plex and Emby. It organizes your media library, fetches metadata and artwork, and streams to client apps on TVs, phones, and browsers.
+[Jellyfin](https://jellyfin.org/) is an open-source media server, a free alternative to Plex and Emby. The server backend is written in **C#** running on **.NET 9** (formerly .NET Core), which gives it cross-platform support across Linux, Windows, and macOS from a single codebase. Jellyfin descends from Emby 3.5.2 and was ported from .NET Framework to .NET Core as part of the fork. It exposes a REST API that all clients consume, with ffmpeg handling media probing, transcoding, and HLS packaging. It organizes your media library, fetches metadata and artwork, and streams to client apps on TVs, phones, and browsers.
 
 The Raspberry Pi 5 **cannot hardware-transcode video**. Its VideoCore VII GPU has a hardware HEVC decoder but no encoder, and Jellyfin doesn't support it for transcoding anyway. If Jellyfin needs to transcode a 4K HEVC stream on the Pi, it falls back to software encoding on the CPU, which the Cortex-A76 cores simply cannot do in real time.
 
