@@ -662,7 +662,7 @@ Then: **95% I/O wait.** SABnzbd was running two `unrar` processes simultaneously
 
 ## Lessons learned
 
-**microSD is the weakest link.** When SABnzbd is downloading, unpacking, and Jellyfin is streaming simultaneously, the SD card becomes the bottleneck. I set up `ionice` to give Jellyfin I/O priority (`ionice -c2 -n0`, best-effort highest) and demote SABnzbd's post-processing to idle (`ionice -c3`). This keeps streams smooth even during heavy downloads.
+**microSD is the weakest link.** When SABnzbd is downloading, unpacking, and Jellyfin is streaming simultaneously, the SD card becomes the bottleneck. I set up `ionice` to give Jellyfin I/O priority (`ionice -c2 -n0`, best-effort highest) and demote SABnzbd's post-processing to idle (`ionice -c3`). This keeps streams smooth even during heavy downloads. One subtlety: `ionice` only affects **disk I/O scheduling** through the Linux block layer --- it has no effect on network traffic. SABnzbd still pulls articles from Usenet at full WiFi speed; it's only the writes to the microSD that yield to Jellyfin's reads. This is the right tradeoff, since the SD card is the bottleneck, not the network. If you needed to throttle network bandwidth too, you'd use SABnzbd's built-in `bandwidth_max` setting or Linux traffic control (`tc`).
 
 **128 GB is tight.** 4K movies are 15-50 GB each. With the OS, Kubernetes, and application data, you've got maybe 60 GB for media. An external USB drive is the obvious next step. The Pi 5's USB 3.0 ports (via RP1) can sustain over 400 MB/s with an SSD.
 
