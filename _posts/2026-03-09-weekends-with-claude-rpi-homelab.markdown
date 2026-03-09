@@ -65,14 +65,7 @@ I bought a Raspberry Pi 5 a while back with vague plans of "doing something cool
   <li><a href="#performance-what-the-pi-does-during-active-downloads">Performance: what the Pi does during active downloads</a></li>
   </ul>
 </li>
-<li><a href="#ups-and-downs">Ups and downs</a>
-  <ul>
-  <li><a href="#friday-night-standing-it-up">Friday night: standing it up</a></li>
-  <li><a href="#saturday-morning-the-wheels-come-off">Saturday morning: the wheels come off</a></li>
-  <li><a href="#saturday-afternoon-taming-the-io-beast">Saturday afternoon: taming the I/O beast</a></li>
-  <li><a href="#the-pattern">The pattern</a></li>
-  </ul>
-</li>
+<li><a href="#ups-and-downs">Ups and downs</a> (collapsible play-by-play)</li>
 <li><a href="#lessons-learned">Lessons learned</a></li>
 <li><a href="#the-stack">The stack</a></li>
 </ul>
@@ -600,7 +593,10 @@ This is the workload that drove all the `ionice` tuning --- without I/O priority
 
 ## Ups and downs
 
-The entire homelab was built in a single day --- a Friday night session and a Saturday afternoon. Here's the timeline, including the things that went wrong.
+The entire homelab was built in a single day --- a Friday night session and a Saturday afternoon. Nearly every problem followed the same arc: deploy something, discover a resource constraint or compatibility issue unique to the Pi's hardware, fix it in Git, push, let Argo sync. The microSD card was the root cause of most pain --- it's the one component you'd upgrade first if doing this again.
+
+<details markdown="1">
+<summary><strong>Full git play-by-play (click to expand)</strong></summary>
 
 ### Friday night: standing it up
 
@@ -660,9 +656,7 @@ Then: **95% I/O wait.** SABnzbd was running two `unrar` processes simultaneously
 
 **Post-commit:** A reboot revealed that cloud-init was resetting the hostname to `raspberrypi` on every boot. Services came up but Traefik had a stale pod from before the reboot stuck in a crash loop. Deleted it, set `preserve_hostname: true` in cloud-init, and everything stabilized.
 
-### The pattern
-
-Nearly every problem followed the same arc: deploy something, discover a resource constraint or compatibility issue unique to the Pi's hardware, fix it in Git, push, let Argo sync. The microSD card was the root cause of most pain --- it's the one component you'd upgrade first if doing this again.
+</details>
 
 ## Lessons learned
 
