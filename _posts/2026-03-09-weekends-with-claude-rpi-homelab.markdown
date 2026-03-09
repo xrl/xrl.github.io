@@ -444,6 +444,33 @@ The [Jellyfin webOS app](https://github.com/jellyfin/jellyfin-webos) is a lightw
 
 Under the hood, the app uses the TV's HTML5 video element for playback. The webOS platform routes the video bitstream to the TV's hardware decoder --- the same silicon that decodes Netflix and Disney+. The result is bit-perfect playback with full HDR metadata, exactly as the content was mastered.
 
+### Inside the Jellyfin webOS app
+
+The architecture is worth understanding because it's clever. The webOS app is *not* a native C++ application or a React Native build. It's a thin shell written in **ES5 JavaScript** that loads the full [jellyfin-web](https://github.com/jellyfin/jellyfin-web) interface inside an iframe. The shell handles three things the web UI can't: server discovery (via UDP broadcast), device profile reporting (telling the server what codecs the TV supports), and platform API access through LG's **Luna Service Bus** --- the IPC mechanism that lets web apps talk to native webOS services.
+
+jellyfin-web itself is a large single-page application descended from [Emby](https://en.wikipedia.org/wiki/Emby)'s web client, which Jellyfin forked in December 2018 when Emby went closed-source. The original codebase was vanilla JavaScript with jQuery-era patterns. Since the fork, the Jellyfin team has been incrementally migrating it to **React** with **TypeScript**, built with **Webpack**. It's a long migration --- the codebase still has legacy controllers and web components alongside modern React pages. A separate [jellyfin-vue](https://github.com/jellyfin/jellyfin-vue) project exists as a ground-up rewrite in Vue.js/Nuxt, but the webOS app still ships the original jellyfin-web.
+
+The ES5 constraint in the webOS shell is deliberate: older webOS versions ship ancient Chromium-based browsers that choke on arrow functions and `const`. By keeping the shell in ES5 and letting jellyfin-web handle its own transpilation via Webpack/Babel, the app runs on TVs going back a decade.
+
+### webOS: how an open-source app runs on your TV
+
+LG has shipped webOS on every smart TV since 2014. The platform has its roots in Palm's mobile OS (remember the Palm Pre?), which HP open-sourced in 2012 before [selling it to LG in 2013](https://en.wikipedia.org/wiki/WebOS). LG repurposed it as a TV platform, and in 2018 released an [open-source edition](https://www.webosose.org/) of the core OS.
+
+| webOS version | TV model year |
+|---------------|---------------|
+| 1.0 | 2014 |
+| 2.0 | 2015 |
+| 3.0 | 2016 |
+| 4.0 | 2017 |
+| 4.5 | 2018 |
+| 5.0 | 2019 |
+| 6.0 | 2021 |
+| 22+ | 2022+ (year-based naming) |
+
+The developer story improved over time. LG's [Developer Mode app](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app) lets you sideload `.ipk` packages onto your TV after registering a free LG developer account. The session lasts 1,000 hours before needing renewal. The [webOS Homebrew Project](https://www.webosbrew.org/) community has pushed this further with persistent sideloading and a homebrew app store via the [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
+
+Jellyfin first landed in the LG Content Store in [July 2022](https://jellyfin.org/posts/webos-july2022/), initially for webOS 6+ (2021 TVs and newer). Older TVs required sideloading through Developer Mode. Since then, LG has approved the app for the Content Store on all webOS versions back to 1.2, meaning it's now a one-click install on LG TVs as far back as **2014**. That's unusual reach for an open-source, community-built app running on a consumer TV platform --- and it works because webOS has always been a web-first OS under the hood. The same HTML5/CSS/JavaScript stack that powers Netflix and YouTube on these TVs powers Jellyfin.
+
 ### Why this matters: the macOS HDR problem
 
 If you've ever tried to play a 4K Dolby Vision file in VLC on a Mac, you've probably seen the infamous purple-and-green tint. VLC can tone-map HDR10 to SDR for display, but it cannot interpret Dolby Vision metadata --- the proprietary enhancement layer that Dolby licenses to hardware vendors. Without the Dolby license, the player falls back to a broken color mapping that produces psychedelic garbage.
@@ -451,6 +478,19 @@ If you've ever tried to play a 4K Dolby Vision file in VLC on a Mac, you've prob
 There's no software fix. Dolby Vision is a closed ecosystem: you need licensed silicon to decode it. Apple's own apps (Apple TV, Safari) handle it because Apple pays Dolby, but third-party players like VLC and mpv are out of luck.
 
 With the LG + Jellyfin setup, this is a non-issue. The TV has the Dolby hardware. Jellyfin just serves the file. You get perfect 4K Dolby Vision playback from a $170 server.
+
+### What won't play: the direct-play-or-nothing tradeoff
+
+Since the Pi can't transcode, any file the TV can't decode natively simply won't play. There's no graceful fallback. Here's what I expect to hit:
+
+- **AV1** --- increasingly common on torrents and YouTube rips. The LG C2's SoC doesn't have an AV1 hardware decoder (LG added that in the 2023 C3). AV1 files will either fail outright or Jellyfin will attempt a software transcode that runs at roughly 2 fps on the Cortex-A76 cores. The 2024+ models and newer TVs handle AV1 natively.
+- **x264 (H.264) at high bitrates** --- the TV decodes H.264 fine, but some scene releases use H.264 at 40+ Mbps for 4K. The TV handles it, but there's no HDR metadata in H.264, so you lose Dolby Vision and HDR10. The image will look washed out compared to the HEVC version of the same content.
+- **DTS and DTS-HD audio** --- LG's webOS dropped DTS support starting with 2020 models after a licensing dispute with DTS (now Xperi). The C2 cannot decode DTS natively. Jellyfin *can* transcode just the audio while direct-playing the video, and the Pi has enough CPU for that, but it adds complexity and a slight delay. Files with DTS-only audio tracks are common in older Blu-ray rips.
+- **TrueHD Atmos** --- the TV supports Dolby Digital Plus with Atmos (the lossy streaming format), but not TrueHD Atmos (the lossless Blu-ray format). Remuxes from UHD Blu-rays often have TrueHD as the primary audio. Jellyfin will fall back to audio transcoding or a secondary AC3 track if one exists.
+- **Dolby Vision Profile 7** --- UHD Blu-ray remuxes use DV Profile 7 (dual-layer, MEL/FEL). The LG C2 supports Profile 7 for Blu-ray playback via its own apps, but the Jellyfin webOS app can only signal Profile 8 (single-layer, the streaming profile). Profile 7 files may play without the DV enhancement layer, falling back to the HDR10 base.
+- **Subtitles in PGS/VOBSUB format** --- bitmap-based subtitle formats can't be passed through in direct play. Jellyfin has to burn them into the video stream, which triggers a full video transcode. SRT and ASS (text-based) subtitles are fine since the client renders them as an overlay.
+
+The practical impact: most content from Usenet and streaming-era sources is HEVC with DD+ or AAC audio, which plays perfectly. The pain points are Blu-ray remuxes (DTS audio, Profile 7 DV, PGS subtitles) and cutting-edge AV1 encodes. I accept the tradeoff --- the files that don't work are a small minority, and for those I'd use a different player anyway.
 
 ### Performance: what the Pi actually does during playback
 
