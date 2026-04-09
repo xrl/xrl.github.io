@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Debugging a CRDT Race Condition With Claude"
-date:   2026-04-09 21:00:00 -0700
+date:   2026-04-09 12:00:00 -0700
 categories: debugging
 ---
 
