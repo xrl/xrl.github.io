@@ -5,7 +5,7 @@ date:   2026-04-09 12:00:00 -0700
 categories: debugging
 ---
 
-A collaborative notebook platform was crashing in the browser with a cryptic Yjs error: `Unexpected case`. AI agents were adding cells to notebooks via MCP tool calls, and the browser would silently corrupt the document. This post is the story of how Claude and I spent a day chasing the bug through five layers of infrastructure, hitting dead ends, building a local dev environment from scratch, and ultimately finding a one-line race condition in the CRDT sync protocol.
+A collaborative notebook platform was crashing in the browser with a cryptic Yjs error: `Unexpected case`. AI agents were adding cells to notebooks via MCP tool calls, and the browser would silently corrupt the document. This post is the story of how Claude and I spent two days chasing the bug through five layers of infrastructure, hitting dead ends, building a local dev environment from scratch, finding a race condition in the wrong library, deploying a fix that didn't work, and then finding the real bug in a different library entirely.
 
 <style>
 .toc { background: #f8f8fc; border: 1px solid #e0e0e8; border-radius: 6px; padding: 1em 1.5em; margin: 1.5em 0; font-size: 0.9em; }
@@ -28,8 +28,12 @@ A collaborative notebook platform was crashing in the browser with a cryptic Yjs
 <li><a href="#dead-end-3-module-federation-bundled-true">Dead End 3: Module Federation bundled:true</a></li>
 <li><a href="#dead-end-4-rebuilding-jupyterlab-core">Dead End 4: Rebuilding JupyterLab Core</a></li>
 <li><a href="#the-turning-point-build-a-local-dev-environment">The Turning Point: Build a Local Dev Environment</a></li>
+<li><a href="#finding-the-first-bug">Finding the First Bug</a></li>
+<li><a href="#the-first-fix-that-didnt-work">The First Fix (That Didn't Work)</a></li>
+<li><a href="#the-wrong-library">The Wrong Library</a></li>
 <li><a href="#finding-the-real-bug">Finding the Real Bug</a></li>
-<li><a href="#the-fix">The Fix</a></li>
+<li><a href="#the-real-fix">The Real Fix</a></li>
+<li><a href="#proving-it">Proving It</a></li>
 <li><a href="#what-i-learned-about-working-with-claude">What I Learned About Working With Claude</a></li>
 </ul>
 </details>
@@ -51,6 +55,8 @@ Caught error while handling a Yjs update Error: Unexpected case
 
 The error would fire, cell content would get truncated or lost, and the notebook would show "Document session error --- Please refresh the browser tab." This happened most reliably when the AI chat panel (backed by OpenCode via ACP) was rapidly adding cells via MCP tool calls while the user had the notebook open.
 
+Later, a second symptom appeared: opening a second browser tab to the same notebook while the AI was working would show the tab permanently behind --- 58 cells instead of 77, never catching up. No error in the console. Just silent data loss.
+
 ## The Stack
 
 The request path has a lot of moving parts:
@@ -63,16 +69,18 @@ Browser (JupyterLab)
       | WebSocket
       |
   jupyter-server
-    jupyter-server-ydoc (server-side sync)
-      pycrdt-websocket (WebSocket ↔ CRDT bridge)
-        pycrdt (Rust-based CRDT, Python bindings)
-    jupyter-ai → opencode acp → Bedrock Claude
+    jupyter-server-documents (sync handler when jupyter-ai is installed)
+      OR jupyter-server-ydoc + pycrdt-websocket (sync handler otherwise)
+    pycrdt (Rust-based CRDT, Python bindings)
+    jupyter-ai -> opencode acp -> Bedrock Claude
       MCP tools: add_cell, edit_cell, etc.
 ```
 
 The AI agent sends chat messages through `jupyter-ai`, which spawns `opencode acp` as a subprocess. OpenCode calls Bedrock Claude, which responds with MCP tool calls (`add_cell`, `edit_cell`). Those tool calls hit the Jupyter REST API, which modifies the server-side Yjs document. The modification is then broadcast to all connected browser tabs via WebSocket.
 
 Somewhere in this chain, the browser was choking on the updates.
+
+A critical detail that would cost us a day: **when `jupyter-ai` is installed, it brings in `jupyter-server-documents`, which replaces the entire WebSocket sync handler.** The base `pycrdt-websocket` code path is never reached. We didn't know this at first.
 
 ## Dead End 1: WebSocket Timeouts
 
@@ -148,7 +156,8 @@ We built a complete local dev environment in `~/code/jupyter/`:
   jupyter-collaboration/   # fork with all sub-packages
   jupyter-ai-tools/        # MCP tools fork
   jupyter_ydoc/            # document models
-  pycrdt-websocket/        # sync protocol (later)
+  pycrdt-websocket/        # sync protocol
+  jupyter-server-documents/ # the ACTUAL sync handler (we didn't know yet)
   .venv/                   # uv-managed Python env
 ```
 
@@ -162,21 +171,21 @@ Key decisions:
 The iteration loop went from ~45 minutes to ~15 seconds:
 
 ```
-Edit yjs source → rollup build (~2s) → jlpm build (~10s) → refresh browser
+Edit yjs source -> rollup build (~2s) -> jlpm build (~10s) -> refresh browser
 ```
 
 Using Playwright, we automated the full reproduction: open JupyterLab, create a chat, select the OpenCode persona via the `@` mention dropdown, send the triggering prompt, and capture browser console errors. The Playwright snapshots were invaluable for navigating the JupyterLab UI programmatically --- finding the chat input combobox, the persona dropdown, the "Always Allow" button for MCP tool permissions.
 
-## Finding the Real Bug
+## Finding the First Bug
 
 With source maps enabled, the stack trace became readable:
 
 ```
 findIndexSS          (yjs.mjs:4465)
-  → findIndexCleanStart (yjs.mjs:4500)
-  → getItemCleanStart   (yjs.mjs:4521)
-  → Item.getMissing      (yjs.mjs:11445)
-  → integrateStructs    (yjs.mjs:3152)
+  -> findIndexCleanStart (yjs.mjs:4500)
+  -> getItemCleanStart   (yjs.mjs:4521)
+  -> Item.getMissing      (yjs.mjs:11445)
+  -> integrateStructs    (yjs.mjs:3152)
 ```
 
 We added diagnostic logging directly to `findIndexSS` in our local yjs checkout:
@@ -190,7 +199,7 @@ console.error('[yjs findIndexSS] FAILED', {
 })
 ```
 
-Rebuilt the collaboration extension with the local yjs linked via portal resolution, reinstalled, restarted. Triggered the bug. The output:
+The output:
 
 ```
 searchClock: 1223
@@ -199,13 +208,11 @@ allRanges: "0..0, 1..8, ..., 1200..1222"
 
 **The client has structs through clock 1222. The server sent an update referencing clock 1223. Off by exactly one.**
 
-We saw the same pattern twice --- first `searchClock: 242` with structs through `240..241`, then `searchClock: 1223` with structs through `1200..1222`. Always exactly one tick past the end.
+We saw the same pattern twice --- always exactly one tick past the end. This wasn't a yjs bug. yjs was correctly rejecting a bad update. The bug was server-side.
 
-This wasn't a yjs bug. yjs was correctly rejecting a bad update. The bug was server-side.
+## The First Fix (That Didn't Work)
 
-## The Fix
-
-We added logging to the Python sync protocol (`pycrdt._sync` and `pycrdt.websocket.yroom`). Then we read the `YRoom.serve()` method:
+We traced the server-side code and found the race in `pycrdt-websocket`'s `YRoom.serve()`:
 
 ```python
 async def serve(self, channel):
@@ -217,46 +224,122 @@ async def serve(self, channel):
             ...
 ```
 
-Meanwhile, `_broadcast_updates()` runs concurrently:
+The client was added to `self.clients` before the sync handshake completed. When the AI agent mutated the doc, `_broadcast_updates()` sent the update to all clients --- including the one mid-handshake. The fix was to defer `self.clients.add(channel)` until after the first sync exchange.
+
+We wrote regression tests, opened an upstream PR ([y-crdt/pycrdt-websocket#138](https://github.com/y-crdt/pycrdt-websocket/pull/138)), pinned the fork in our Docker image, and deployed.
+
+**The crash stopped. But a new, worse problem appeared: silent cell loss.** Opening a second tab to a notebook while the AI was adding cells would show the tab permanently behind (58 cells vs 77). No error in the console. No crash. Just missing cells, forever.
+
+## The Wrong Library
+
+This is where we lost a day. The pycrdt-websocket fix was *correct code* --- it solved the race condition in `YRoom.serve()`. But it was fixing code that was never reached.
+
+When `jupyter-ai` is installed, it depends on `jupyter-server-documents`, a separate package from `jupyter-ai-contrib`. This package **replaces the entire WebSocket sync handler.** It has its own `YRoom` class, its own `YjsClientGroup`, its own `_broadcast_message()`. The `pycrdt-websocket` `YRoom.serve()` method is never called.
+
+We discovered this by tracing the actual WebSocket connection in the running server. The handler was `jupyter_server_documents.websockets.yroom_ws.YRoomWebsocket`, not anything from pycrdt-websocket. The fork we'd deployed was dead code.
+
+## Finding the Real Bug
+
+The bug in `jupyter-server-documents` was the same pattern, but in different code:
 
 ```python
-async def _broadcast_updates(self):
-    async for update in self._update_receive_stream:
-        for client in self.clients:        # includes the new client!
-            self._task_group.start_soon(client.send, message)
+# yroom_ws.py - WebSocket handler
+def open(self, *_, **__):
+    self.client_id = self.yroom.clients.add(self)  # added as "desynced"
+
+# yroom.py - broadcast
+def _broadcast_message(self, message, message_type):
+    clients = self.clients.get_all()  # defaults to synced_only=True
+    for client in clients:
+        client.websocket.write_message(message, binary=True)
+
+# yroom.py - sync handshake
+def handle_sync_step1(self, client_id, message):
+    sync_step2_message = pycrdt.handle_sync_message(...)
+    new_client.websocket.write_message(sync_step2_message, ...)
+    self.clients.mark_synced(client_id)  # NOW broadcasts reach this client
 ```
 
-**The client is added to `self.clients` before the sync handshake completes.** When the AI agent adds a cell (mutating the server-side doc), `_broadcast_updates` sends the update to all clients --- including the one that hasn't finished its initial sync. The update references clock 1223, but the client only has through 1222.
+The `_broadcast_message()` method calls `get_all()` which defaults to `synced_only=True`. Any mutations between `open()` (client added as desynced) and `mark_synced()` in `handle_sync_step1()` are broadcast only to already-synced clients. The new desynced client silently misses them.
 
-The fix is two lines:
+No crash. No error. Just permanently missing cells.
+
+We tried a catchup approach: after `mark_synced()`, compute `ydoc.get_update(client_state)` using the client's original state vector and send it. But this produced the identical diff as `SYNC_STEP2` (which used the same state vector). Yjs deduplicated it on the client side, making the catchup a no-op.
+
+## The Real Fix
+
+Instead of a catchup, we went with **queue + replay**. Three files changed in `jupyter-server-documents`:
+
+**`clients.py`** --- added a `pending_messages` list to each client:
 
 ```python
-# Before: self.clients.add(channel) at the top of serve()
-# After: defer until the first sync exchange completes
+class YjsClient:
+    pending_messages: list[bytes]
 
-synced = False
-async for message in channel:
-    ...
-    reply = handle_sync_message(message[1:], self.ydoc)
-    if reply is not None:
-        tg.start_soon(channel.send, reply)
-    if not synced:
-        self.clients.add(channel)  # NOW safe
-        synced = True
+    def __init__(self, websocket):
+        self.pending_messages = []
 ```
 
-We wrote a regression test that creates a YRoom, connects a client, rapidly mutates the server-side doc 20 times during the handshake, and asserts the client receives all data without errors.
+**`yroom.py` --- `_broadcast_message()`** --- now iterates all clients, queuing for desynced ones:
 
-Upstream PR: [y-crdt/pycrdt-websocket#138](https://github.com/y-crdt/pycrdt-websocket/pull/138)
+```python
+def _broadcast_message(self, message, message_type):
+    for client in self.clients.get_all(synced_only=False):
+        if client.synced:
+            client.websocket.write_message(message, binary=True)
+        else:
+            client.pending_messages.append(message)
+```
+
+**`yroom.py` --- `handle_sync_step1()`** --- replays queued messages after sync:
+
+```python
+self.clients.mark_synced(client_id)
+
+for msg in new_client.pending_messages:
+    new_client.websocket.write_message(msg, binary=True)
+new_client.pending_messages.clear()
+```
+
+SYNC_STEP2 already covers the doc state at the time it was computed. The queued messages cover mutations that happened during the handshake gap. Yjs deduplicates any overlap automatically.
+
+## Proving It
+
+We needed to prove this worked, not just hope. Three layers of testing:
+
+**Code-level proof.** A script that creates a `YjsClientGroup` with one synced and one desynced client, then checks what `_broadcast_message` would do:
+
+```
+UNFIXED: _broadcast_message sends to 1 client. Client B received: 0 messages. DROPPED.
+FIXED:   _broadcast_message iterates 2 clients. Client B pending: 1 message. QUEUED.
+```
+
+**Unit tests.** 13 new tests, including one that simulates the exact production scenario --- 10 initial cells, 19 added during handshake, second client connects mid-stream, all 29 cells must arrive. On the unfixed code: 2 tests fail. On the fix branch: all 23 pass.
+
+**Automated E2E.** We built a Go CLI (`trigger`) that drives two headless Playwright browser sessions against a local JupyterLab. It creates a fresh notebook, chats with `@OpenCode` to generate ~60 cells, opens a second tab mid-stream, and polls both tabs for cell counts every 5 seconds:
+
+```
+UNFIXED (main): tab1=63 tab2=63 -> tab1=63 tab2=68 -> tab1=63 tab2=77
+                FAIL: tabs diverged, diff=-14
+
+FIXED:          tab1=62 tab2=62 -> tab1=62 tab2=62 -> tab1=62 tab2=62
+                PASS: tabs converged (62/62), 47 samples, diff=0
+```
+
+The unfixed run shows tab 1 freezing at 63 cells while tab 2 keeps growing --- the classic symptom. The fixed run stays locked at diff=0.
 
 ## What I Learned About Working With Claude
 
+**The right fix in the wrong library is the wrong fix.** We spent a day on pycrdt-websocket. The code change was correct. The tests passed. The upstream PR was clean. But `jupyter-server-documents` replaces that entire code path when `jupyter-ai` is installed. Understanding which library actually handles the WebSocket would have saved a full day. When you're debugging through a deep dependency stack, trace the actual runtime code path before writing fixes.
+
 **Claude is good at breadth, bad at knowing when to stop.** The first four attempts were all reasonable hypotheses, and Claude executed each one competently --- creating forks, writing PRs, updating Dockerfiles, cutting tags. But each one went through the full production pipeline before we discovered it didn't work. I should have pushed for a local dev environment earlier.
 
-**The 45-minute iteration loop was the real enemy.** The bug itself was a one-line fix. We spent most of the day waiting for Docker builds. Once we had a 15-second iteration loop, we found the root cause in about an hour.
+**The 45-minute iteration loop was the real enemy.** The bug itself was a three-file fix. We spent most of the first day waiting for Docker builds. Once we had a 15-second iteration loop, we found the root cause in about an hour.
+
+**Build automated reproduction tooling early.** We built a Go CLI that drives two Playwright sessions, creates a notebook, triggers the AI agent, opens a second tab, and monitors convergence. This let us run the same test against the unfixed code (FAIL, diff=-14) and fixed code (PASS, diff=0) in minutes instead of hours. The tool paid for itself immediately and will catch regressions in the future.
 
 **Playwright was essential for automated reproduction.** JupyterLab's UI is complex --- chat panels, persona dropdowns, MCP tool permission dialogs. Playwright let us script the full reproduction: navigate to the notebook, create a chat, `@` mention the AI persona, send the triggering prompt, open a second tab, and capture console errors. Without it, we would have been manually clicking through the UI for each test.
 
-**Claude's best move was reading the source.** Not theorizing about Module Federation, not trying another fork strategy --- just reading `yroom.py` line by line and seeing that `self.clients.add(channel)` was in the wrong place. The instrumented `findIndexSS` gave us the exact data ("off by one, always"), and from there the source told the rest of the story.
+**Claude's best move was reading the source.** Not theorizing about Module Federation, not trying another fork strategy --- just reading `yroom.py` line by line and seeing that `get_all()` defaulted to `synced_only=True`. The instrumented `findIndexSS` gave us the exact data ("off by one, always"), and from there the source told the rest of the story.
 
-**Plan for upstream contributions from the start.** We eventually needed forks of three repos (`jupyter-collaboration`, `jupyter-ai-tools`, `pycrdt-websocket`). Having them all checked out in `~/code/jupyter/` with editable installs made it trivial to patch, rebuild, and test locally before pushing upstream PRs with regression tests.
+**Plan for upstream contributions from the start.** We eventually needed forks of four repos (`jupyter-collaboration`, `jupyter-ai-tools`, `pycrdt-websocket`, `jupyter-server-documents`). Having them all checked out in `~/code/jupyter/` with editable installs made it trivial to patch, rebuild, and test locally before pushing upstream PRs with regression tests.
