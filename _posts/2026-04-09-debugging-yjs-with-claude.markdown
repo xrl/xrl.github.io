@@ -351,3 +351,36 @@ Having a tool like this matters because the bug is a race condition --- it depen
 **Claude's best move was reading the source.** Not theorizing about Module Federation, not trying another fork strategy --- just reading `yroom.py` line by line and seeing that `get_all()` defaulted to `synced_only=True`. The instrumented `findIndexSS` gave us the exact data ("off by one, always"), and from there the source told the rest of the story.
 
 **Plan for upstream contributions from the start.** We eventually needed forks of four repos (`jupyter-collaboration`, `jupyter-ai-tools`, `pycrdt-websocket`, `jupyter-server-documents`). Having them all checked out in `~/code/jupyter/` with editable installs made it trivial to patch, rebuild, and test locally before pushing upstream PRs with regression tests.
+
+## All the PRs
+
+This is everything that got filed over the course of the investigation, in rough chronological order. The dead ends are included --- they're part of the story.
+
+**Upstream (open source):**
+
+| PR | Status | What |
+|----|--------|------|
+| [jupyter-ai-contrib/jupyter-ai-tools#24](https://github.com/jupyter-ai-contrib/jupyter-ai-tools/pull/24) | Open | Fix `add_cell` creating code cells without `execution_count` |
+| [y-crdt/pycrdt-websocket#138](https://github.com/y-crdt/pycrdt-websocket/pull/138) | Open | Fix sync handshake race in `YRoom.serve()` (correct fix, wrong library) |
+
+**Internal infrastructure (scientist-hq/infra):**
+
+| PR | Status | What |
+|----|--------|------|
+| [#282](https://github.com/scientist-hq/infra/pull/282) | Merged | Add `jupyter-collaboration` to fix browser desync |
+| [#291](https://github.com/scientist-hq/infra/pull/291) | Merged | Bump jupyter-collaboration for yjs GC crash fix |
+| [#292](https://github.com/scientist-hq/infra/pull/292) | Merged | Fix jupyter-collaboration pip install from monorepo fork |
+| [#295](https://github.com/scientist-hq/infra/pull/295) | Merged | Fix AI agent `add_cell` creating invalid notebook cells |
+| [#297](https://github.com/scientist-hq/infra/pull/297) | Merged | Fix yjs 13.6.30 fork to actually override JupyterLab core |
+| [#298](https://github.com/scientist-hq/infra/pull/298) | Merged | Rebuild JupyterLab core with yjs 13.6.30 |
+| [#301](https://github.com/scientist-hq/infra/pull/301) | Closed | Dev build so 13.6.30 reaches extension vendor chunks (didn't work) |
+| [#302](https://github.com/scientist-hq/infra/pull/302) | Merged | Replace `jupyter lab build` hack with pycrdt-websocket fork |
+| [#308](https://github.com/scientist-hq/infra/pull/308) | Merged | Replace pycrdt-websocket fork with jupyter-server-documents fork (the actual fix) |
+
+**Deployment (scientist-hq/k3-applications):**
+
+| PR | Status | What |
+|----|--------|------|
+| [#155](https://github.com/scientist-hq/k3-applications/pull/155) | Merged | Fix JupyterHub WebSocket timeouts (ingress annotations) |
+| [#156](https://github.com/scientist-hq/k3-applications/pull/156) | Merged | Bump image for yjs 13.6.30 + pycrdt-websocket fix |
+| [#157](https://github.com/scientist-hq/k3-applications/pull/157) | Open | Bump image for jupyter-server-documents fix (the real fix) |
