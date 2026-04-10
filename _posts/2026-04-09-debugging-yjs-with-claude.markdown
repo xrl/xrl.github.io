@@ -316,7 +316,13 @@ FIXED:   _broadcast_message iterates 2 clients. Client B pending: 1 message. QUE
 
 **Unit tests.** 13 new tests, including one that simulates the exact production scenario --- 10 initial cells, 19 added during handshake, second client connects mid-stream, all 29 cells must arrive. On the unfixed code: 2 tests fail. On the fix branch: all 23 pass.
 
-**Automated E2E.** We built a Go CLI (`trigger`) that drives two headless Playwright browser sessions against a local JupyterLab. It creates a fresh notebook, chats with `@OpenCode` to generate ~60 cells, opens a second tab mid-stream, and polls both tabs for cell counts every 5 seconds:
+**Automated E2E.** We built a Go CLI ([source](https://gist.github.com/xrl/b510c73f7d8363a040ef0731c3f681a7)) that distills all the fiddly Playwright-driven reproduction steps into a single command. Over several debugging sessions, Claude and I had spent hundreds of turns manually driving `playwright-cli` --- learning JupyterLab's DOM structure, finding the right element refs in snapshot YAMLs, handling dialogs, dealing with multiple notebook panels in a single tab, and getting the cell counting selectors right (`.jp-NotebookPanel.jp-mod-current` to avoid counting cells from background notebooks). The CLI captures all of that hard-won knowledge.
+
+It works by opening two named Playwright sessions (`{uuid}-1` and `{uuid}-2`), each controlling a headless Chrome. Session 1 navigates to JupyterLab, creates a fresh notebook (named with the UUID for traceability), opens a new chat, selects the `@OpenCode` persona from the autocomplete dropdown, and sends a prompt that triggers ~60 cells of rapid AI-generated content. Once cells start appearing, session 2 opens the same notebook in a separate JupyterLab workspace. Three concurrent goroutines then poll both tabs for cell counts and console errors every 5 seconds, logging timestamped diffs to both stdout and a `{uuid}.log` file.
+
+```bash
+./trigger --token=$TOKEN --description="commit 5608f99 on fix-sync-handshake-race"
+```
 
 ```
 UNFIXED (main): tab1=63 tab2=63 -> tab1=63 tab2=68 -> tab1=63 tab2=77
@@ -327,6 +333,8 @@ FIXED:          tab1=62 tab2=62 -> tab1=62 tab2=62 -> tab1=62 tab2=62
 ```
 
 The unfixed run shows tab 1 freezing at 63 cells while tab 2 keeps growing --- the classic symptom. The fixed run stays locked at diff=0.
+
+Having a tool like this matters because the bug is a race condition --- it depends on timing between WebSocket handshakes and document mutations. You can't reproduce it by clicking around manually. And if the bug regresses, you don't want to spend another afternoon re-learning which CSS selectors to use or how to handle JupyterLab's chat dialog flow. The CLI encodes all of that and produces a log file you can diff against previous runs.
 
 ## What I Learned About Working With Claude
 
