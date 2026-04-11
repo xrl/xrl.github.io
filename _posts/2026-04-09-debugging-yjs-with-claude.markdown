@@ -5,7 +5,7 @@ date:   2026-04-09 12:00:00 -0700
 categories: debugging
 ---
 
-A collaborative notebook platform was crashing in the browser with a cryptic Yjs error: `Unexpected case`. AI agents were adding cells to notebooks via MCP tool calls, and the browser would silently corrupt the document. This post is the story of how Claude and I spent two days chasing the bug through five layers of infrastructure, hitting dead ends, building a local dev environment from scratch, finding a race condition in the wrong library, deploying a fix that didn't work, and then finding the real bug in a different library entirely.
+A collaborative notebook platform was crashing in the browser with a cryptic Yjs error: `Unexpected case`. AI agents were adding cells to notebooks via MCP tool calls, and the browser would silently corrupt the document. This post is the story of how Claude and I spent three days chasing the bug through five layers of infrastructure, hitting dead ends, building a local dev environment from scratch, finding a race condition in the wrong library, deploying a fix that exposed a *second* bug in a *different* library, and then building an executable proof that the two bugs were independent before writing the actual fix.
 
 <style>
 .toc { background: #f8f8fc; border: 1px solid #e0e0e8; border-radius: 6px; padding: 1em 1.5em; margin: 1.5em 0; font-size: 0.9em; }
@@ -32,9 +32,15 @@ A collaborative notebook platform was crashing in the browser with a cryptic Yjs
 <li><a href="#the-first-fix-that-didnt-work">The First Fix (That Didn't Work)</a></li>
 <li><a href="#the-wrong-library">The Wrong Library</a></li>
 <li><a href="#finding-the-real-bug">Finding the Real Bug</a></li>
-<li><a href="#the-real-fix">The Real Fix</a></li>
-<li><a href="#proving-it">Proving It</a></li>
+<li><a href="#the-first-real-fix">The First Real Fix</a></li>
+<li><a href="#proving-the-first-fix">Proving the First Fix</a></li>
+<li><a href="#deployed-to-production-still-broken">Deployed to Production: Still Broken</a></li>
+<li><a href="#finding-the-second-bug">Finding the Second Bug</a></li>
+<li><a href="#proving-both-bugs-are-independent">Proving Both Bugs Are Independent</a></li>
+<li><a href="#the-actual-fix">The Actual Fix</a></li>
+<li><a href="#epilogue-the-fix-that-wasnt-installed">Epilogue: The Fix That Wasn't Installed</a></li>
 <li><a href="#what-i-learned-about-working-with-claude">What I Learned About Working With Claude</a></li>
+<li><a href="#upstream-prs">Upstream PRs</a></li>
 </ul>
 </details>
 </div>
@@ -266,7 +272,7 @@ No crash. No error. Just permanently missing cells.
 
 We tried a catchup approach: after `mark_synced()`, compute `ydoc.get_update(client_state)` using the client's original state vector and send it. But this produced the identical diff as `SYNC_STEP2` (which used the same state vector). Yjs deduplicated it on the client side, making the catchup a no-op.
 
-## The Real Fix
+## The First Real Fix
 
 Instead of a catchup, we went with **queue + replay**. Three files changed in `jupyter-server-documents`:
 
@@ -303,7 +309,7 @@ new_client.pending_messages.clear()
 
 SYNC_STEP2 already covers the doc state at the time it was computed. The queued messages cover mutations that happened during the handshake gap. Yjs deduplicates any overlap automatically.
 
-## Proving It
+## Proving the First Fix
 
 We needed to prove this worked, not just hope. Three layers of testing:
 
@@ -336,25 +342,254 @@ The unfixed run shows tab 1 freezing at 63 cells while tab 2 keeps growing --- t
 
 Having a tool like this matters because the bug is a race condition --- it depends on timing between WebSocket handshakes and document mutations. You can't reproduce it by clicking around manually. And if the bug regresses, you don't want to spend another afternoon re-learning which CSS selectors to use or how to handle JupyterLab's chat dialog flow. The CLI encodes all of that and produces a log file you can diff against previous runs.
 
+## Deployed to Production: Still Broken
+
+We deployed the queue+replay fix. Docker build, ECR push, ArgoCD sync. Opened two browser tabs while the AI agent was expanding a notebook.
+
+Both tabs got the same `findIndexSS` "Unexpected case" crash and dropped out of the room. More stable than before --- it took longer to trigger --- but not fixed.
+
+The server logs showed the queue+replay working correctly: messages were being queued and replayed. But the *replayed messages themselves* were crashing the browser. The updates that `_broadcast_message` captured as raw bytes and replayed to the client contained something that JS yjs couldn't digest.
+
+Why didn't local E2E catch this? Because locally, the AI agent adds cells slowly (~5-10 seconds between tool calls, limited by Bedrock round-trip latency). The sync handshake usually completed before any mutations fired, so `pending_messages` was empty. In production with real concurrent load, the race window was hit reliably and the replayed messages crashed the client.
+
+We were in a frustrating spot: the handshake race was definitely real (the logs proved it), the fix was conceptually correct (queue and replay), but the replayed updates were somehow malformed. We needed to reproduce this in a way that didn't require a full-stack deployment.
+
+## Finding the Second Bug
+
+I told Claude to focus on a pure Python stress test --- no Playwright, no Docker, no deployment. Reproduce it in the small.
+
+Claude built a cross-runtime test: Python generates pycrdt updates, writes them to a temp file, Node.js applies them to a JS yjs `Y.Doc`. The test used the local yjs checkout we'd already built with diagnostic logging.
+
+The first test (notebook cells as `Map` values with plain strings) passed fine. But then Claude tried `Text` CRDT operations with Unicode content --- simulating an AI agent typing code with emoji and CJK characters --- and the JS side exploded:
+
+```
+[yjs findIndexSS] FAILED — clock not found in structs {
+  searchClock: 14,
+  structsLength: 1,
+  firstStruct: { client: 518772262, clock: 0, len: 14 },
+  lastStruct: { client: 518772262, clock: 0, len: 14 },
+  allRanges: '0..13'
+}
+```
+
+The struct covers clocks 0--13. The update references clock 14. Off by one --- the same pattern we'd seen in the browser. And it had nothing to do with the handshake race.
+
+The minimal reproduction was just three lines of Python:
+
+```python
+import pycrdt
+
+doc = pycrdt.Doc()
+doc['t'] = pycrdt.Text()
+doc['t'] += 'A📊B'
+doc['t'].insert(2, 'X')  # expects "A📊XB", gets "A📊BX"
+```
+
+pycrdt puts the `X` at the wrong position. The emoji `📊` is 1 Python character but takes up more space in pycrdt's internal encoding. After any multi-byte character, all subsequent insert positions are off.
+
+This wasn't just a display bug. The wire-format updates that pycrdt generates encode these wrong positions. When JS yjs tries to apply them, the struct clock references don't match, and `findIndexSS` crashes.
+
+We had been chasing **two independent bugs** that happened to produce the same error:
+
+1. **Bug 1 (handshake race):** Server drops broadcasts for desynced clients during the sync handshake. Causes silent data loss --- missing cells, no error.
+
+2. **Bug 2 (pycrdt offset encoding):** pycrdt encodes Text CRDT positions using UTF-8 byte offsets, but JS yjs expects UTF-16 code unit offsets. After multi-byte characters, incremental updates crash JS yjs with `findIndexSS`.
+
+On the unfixed `main` branch, Bug 1 *masks* Bug 2. The bad updates are silently dropped (never sent to the desynced client), so the client never crashes --- it just silently loses data. When we fixed Bug 1 (queue+replay), the bad updates were finally *delivered*, and Bug 2's crash became visible.
+
+Trading silent data loss for visible crashes was actually progress. But we needed to fix both.
+
+## Proving Both Bugs Are Independent
+
+I was tired of deploying fixes that didn't work. Before writing another line of fix code, I wanted proof that these were two independent bugs and that fixing both would actually work.
+
+Claude built a single Python test with a companion Node.js script that demonstrates both bugs in isolation and in combination. The test has three parts:
+
+**Part A --- Bug 1 in isolation (ASCII only, no Bug 2):**
+
+Handshake race with ASCII-only text. Without the queue, gap data is lost. With the queue, it arrives. No JS involvement needed.
+
+```
+  bug1_unfixed:  has_gap_data=False  msgs=2
+  bug1_fixed:    has_gap_data=True   msgs=6
+```
+
+**Part B --- Bug 2 in isolation (synced client, no handshake race):**
+
+A fully synced client applies incremental Text updates with emoji. Individual updates crash JS yjs. A batched update (same content, one message) works fine.
+
+```
+  individual updates: js_errors=1  text_correct=False
+    msg 2: Unexpected case
+  batched update:     js_errors=0  text_correct=True
+```
+
+**Part C --- Both bugs combined (handshake race + Unicode content):**
+
+Three handshake strategies applied to the same scenario: AI agent adds cells with emoji during the handshake gap.
+
+```
+  Config                  Gap updates  JS errors  JS has gap?
+  combined_no_fix         0            0          NO
+  combined_queue_replay   4            1          NO
+  combined_queue_batch    1            0          YES
+```
+
+`no_fix`: Gap updates are dropped (Bug 1). The bad updates never reach JS, so no crash --- but the data is lost.
+
+`queue_replay`: Gap updates are delivered as 4 individual messages (Bug 1 fixed). One of them crashes JS yjs (Bug 2 exposed). The client drops the update and loses the data anyway.
+
+`queue_batch`: Gap updates are delivered as 1 batched diff computed from the pre-handshake state vector (both fixed). Zero errors. Gap data present.
+
+The full attribution matrix:
+
+```
+  Config             Bug 1 (data loss)  Bug 2 (JS crash)
+  A: no queue        PRESENT            N/A (ASCII)
+  A: with queue      FIXED              N/A (ASCII)
+  B: individual      N/A (synced)       PRESENT
+  B: batched         N/A (synced)       FIXED
+  C: no fix          PRESENT            DORMANT
+  C: queue+replay    FIXED              PRESENT
+  C: queue+batch     FIXED              FIXED
+```
+
+Each bug is independently demonstrable. Each fix addresses exactly one bug. Only fixing both produces correct behavior. This wasn't speculation or theory --- it was executable proof that ran in seconds.
+
+## The Actual Fix
+
+With the attribution matrix in hand, the fix was clear. Two changes, one in each library:
+
+### Server side: batched catchup (jupyter-server-documents)
+
+Replace the individual message replay with a single batched diff:
+
+```python
+def handle_sync_step1(self, client_id, message):
+    # Save state BEFORE computing SYNC_STEP2
+    pre_sync_sv = self._ydoc.get_state()
+
+    # Compute and send SYNC_STEP2 as normal
+    sync_step2_message = pycrdt.handle_sync_message(...)
+    new_client.websocket.write_message(sync_step2_message, ...)
+
+    # Mark synced
+    self.clients.mark_synced(client_id)
+
+    # Send ONE batched diff covering the handshake gap
+    # (not individual queued messages that may have bad offsets)
+    catchup = self._ydoc.get_update(pre_sync_sv)
+    if catchup and len(catchup) > 2:
+        catchup_msg = pycrdt.create_update_message(catchup)
+        new_client.websocket.write_message(catchup_msg, ...)
+    new_client.pending_messages.clear()
+```
+
+The key insight: `get_update(pre_sync_sv)` produces a single update containing all mutations since the saved state vector. All CRDT struct references within this single update are self-consistent, so JS yjs can resolve them without hitting the offset encoding bug. The individual queued messages (which have the bad offsets from Bug 2) are discarded --- the batched diff covers the same content.
+
+The `_broadcast_message` queuing stays in place (Bug 1 fix). We just don't replay individual messages --- the batched diff makes them redundant.
+
+### Upstream: UTF-16 offset encoding (pycrdt)
+
+The fundamental fix belongs in pycrdt. The yrs Rust library has an `OffsetKind` option that defaults to `OffsetKind::Bytes` (UTF-8 byte offsets). JS yjs uses UTF-16. The fix is two parts:
+
+**`src/doc.rs`** --- set `OffsetKind::Utf16` when creating a Doc:
+
+```rust
+options.offset_kind = OffsetKind::Utf16;
+let doc = _Doc::with_options(options);
+```
+
+**`python/pycrdt/_text.py`** --- convert Python character indices to UTF-16 code unit indices:
+
+```python
+def _char_to_utf16(text: str, char_index: int) -> int:
+    """Convert a Python character index to a UTF-16 code unit index."""
+    prefix = text[:char_index]
+    extra = sum(1 for ch in prefix if ord(ch) > 0xFFFF)
+    return char_index + extra
+```
+
+This conversion is applied in `insert()`, `__setitem__`, `__delitem__`, `format()`, and `__len__()`. For ASCII and BMP text (most content), it's a no-op.
+
+After the fix, `insert(2, 'X')` after `'A📊B'` correctly produces `'A📊XB'`. All 6 cross-runtime test cases with emoji/CJK/Cyrillic pass where they previously crashed. All 122 existing pycrdt tests pass.
+
+With the pycrdt fix, even the simpler queue+replay approach (Approach B) would work --- the replayed individual updates would have correct offsets. But the batched catchup (Approach C) is the right server-side fix regardless: it's simpler, it sends less data over the wire, and it doesn't depend on the upstream pycrdt fix being merged.
+
+## Epilogue: The Fix That Wasn't Installed
+
+A day after deploying the fix, the bug was still happening in production. I asked Claude to exec into my JupyterHub pod and check whether the pycrdt fork was actually running. It wasn't.
+
+The Dockerfile installed the fork correctly:
+
+```dockerfile
+RUN pip install maturin && \
+    pip install "pycrdt @ git+https://github.com/xrl/pycrdt@308-fix-utf16-offset-encoding" && \
+    rm -rf /home/jovyan/.cargo /home/jovyan/.rustup
+```
+
+The CI build log told the whole story:
+
+```
+#18 [10/17] RUN pip install maturin && pip install "pycrdt @ ..."
+#18 1.566 Collecting pycrdt @ git+https://github.com/xrl/pycrdt@308-fix-utf16-offset-encoding
+#18 2.599   Resolved https://github.com/xrl/pycrdt to commit 7cf5af4
+#18 4.883 Requirement already satisfied: anyio<5.0.0,>=4.4.0 ...
+#18 DONE 5.4s
+```
+
+5.4 seconds. pycrdt is a Rust extension --- building it from source with maturin takes minutes, not seconds. pip cloned the fork, read the metadata, saw that the version string was `0.12.50` --- the same as the upstream already installed by `mamba env update` earlier in the Dockerfile --- and decided the requirement was already satisfied. It never compiled anything.
+
+The fork, the upstream, and every CI build all reported version `0.12.50`. pip doesn't compare git commit hashes. It compares version strings. Same version string = already installed = skip. The Rust build never ran.
+
+The fix was one flag:
+
+```dockerfile
+RUN pip install maturin && \
+    pip install --force-reinstall --no-deps \
+    "pycrdt @ git+https://github.com/xrl/pycrdt@308-fix-utf16-offset-encoding" && \
+    rm -rf /home/jovyan/.cargo /home/jovyan/.rustup
+```
+
+After the fix, the build log showed what should have been happening all along:
+
+```
+#18 6.182 Building wheels for collected packages: pycrdt
+#18 6.184   Building wheel for pycrdt (pyproject.toml): started
+#18 23.79   Building wheel for pycrdt (pyproject.toml): finished with status 'done'
+#18 23.80   Attempting uninstall: pycrdt
+#18 23.81     Found existing installation: pycrdt 0.12.50
+#18 23.87       Successfully uninstalled pycrdt-0.12.50
+#18 23.96 Successfully installed pycrdt-0.12.50
+```
+
+18 seconds of Rust compilation. Uninstall of the upstream. Install of the fork. This is what "successfully installed" is supposed to look like.
+
+The irony is hard to miss. We spent days proving the fix was correct --- attribution matrices, cross-runtime tests, stress tests, executable proofs. The fix *was* correct. It just wasn't running. pip looked at two identical version strings, shrugged, and moved on. The most dangerous bugs are the ones where everything looks green.
+
 ## What I Learned About Working With Claude
 
-**The right fix in the wrong library is the wrong fix.** We spent a day on pycrdt-websocket. The code change was correct. The tests passed. The upstream PR was clean. But `jupyter-server-documents` replaces that entire code path when `jupyter-ai` is installed. Understanding which library actually handles the WebSocket would have saved a full day. When you're debugging through a deep dependency stack, trace the actual runtime code path before writing fixes.
+**The right fix in the wrong library is the wrong fix.** We spent a day on pycrdt-websocket. The code change was correct. The tests passed. The upstream PR was clean. But `jupyter-server-documents` replaces that entire code path when `jupyter-ai` is installed. Understanding which library actually handles the WebSocket would have saved a full day.
 
-**Claude is good at breadth, bad at knowing when to stop.** The first four attempts were all reasonable hypotheses, and Claude executed each one competently --- creating forks, writing PRs, updating Dockerfiles, cutting tags. But each one went through the full production pipeline before we discovered it didn't work. I should have pushed for a local dev environment earlier.
+**One bug can mask another.** Bug 1 (silent data loss) masked Bug 2 (JS crash) for months. The bad updates were being dropped before they reached the client, so nobody saw the crash --- just missing cells. Fixing Bug 1 made Bug 2 visible, which felt like a regression. Building the attribution matrix was the only way to untangle them.
+
+**Prove your fix before deploying it.** We deployed queue+replay to production and it failed. If we'd had the cross-runtime Python+Node test earlier, we'd have caught the pycrdt offset bug in seconds instead of wasting another deploy cycle. The attribution test runs in under 3 seconds. A production deploy takes 45 minutes.
 
 **The 45-minute iteration loop was the real enemy.** The bug itself was a three-file fix. We spent most of the first day waiting for Docker builds. Once we had a 15-second iteration loop, we found the root cause in about an hour.
 
-**Build automated reproduction tooling early.** We built a Go CLI that drives two Playwright sessions, creates a notebook, triggers the AI agent, opens a second tab, and monitors convergence. This let us run the same test against the unfixed code (FAIL, diff=-14) and fixed code (PASS, diff=0) in minutes instead of hours. The tool paid for itself immediately and will catch regressions in the future.
+**Claude is good at breadth, bad at knowing when to stop.** The first four attempts were all reasonable hypotheses, and Claude executed each one competently. But each one went through the full production pipeline before we discovered it didn't work. I should have pushed for a local dev environment earlier.
 
-**Playwright was essential for automated reproduction.** JupyterLab's UI is complex --- chat panels, persona dropdowns, MCP tool permission dialogs. Playwright let us script the full reproduction: navigate to the notebook, create a chat, `@` mention the AI persona, send the triggering prompt, open a second tab, and capture console errors. Without it, we would have been manually clicking through the UI for each test.
+**Build automated reproduction tooling early.** We built a Go CLI ([source](https://gist.github.com/xrl/b510c73f7d8363a040ef0731c3f681a7)) that drives two Playwright sessions and monitors notebook convergence. We also built a pure Python+Node attribution test that proves both bugs independently in under 3 seconds. Both tools paid for themselves immediately.
 
-**Claude's best move was reading the source.** Not theorizing about Module Federation, not trying another fork strategy --- just reading `yroom.py` line by line and seeing that `get_all()` defaulted to `synced_only=True`. The instrumented `findIndexSS` gave us the exact data ("off by one, always"), and from there the source told the rest of the story.
+**Verify the fix is actually running.** We had a correct fix, passing CI, and a green deploy. But pip silently skipped the install because the version strings matched. The pod ran upstream pycrdt for days. `exec` into the pod. `grep` for your patch. Check the build log timestamps. "Successfully installed" means nothing if the build step took 5 seconds instead of 5 minutes.
 
-**Plan for upstream contributions from the start.** We eventually needed forks of four repos (`jupyter-collaboration`, `jupyter-ai-tools`, `pycrdt-websocket`, `jupyter-server-documents`). Having them all checked out in `~/code/jupyter/` with editable installs made it trivial to patch, rebuild, and test locally before pushing upstream PRs with regression tests.
+**Claude's best move was reading the source.** Not theorizing about Module Federation, not trying another fork strategy --- just reading `yroom.py` line by line, reading pycrdt's `text.rs` to find the missing offset conversion, and building executable proofs for each hypothesis.
 
 ## Upstream PRs
 
 | PR | Status | What |
 |----|--------|------|
+| [y-crdt/pycrdt#379](https://github.com/y-crdt/pycrdt/pull/379) | Open | Fix UTF-16 offset encoding for Text operations (Bug 2 root cause) |
+| [jupyter-ai-contrib/jupyter-server-documents#218](https://github.com/jupyter-ai-contrib/jupyter-server-documents/pull/218) | Open | Batched catchup during sync handshake (Bug 1 fix + Bug 2 workaround) |
 | [jupyter-ai-contrib/jupyter-ai-tools#24](https://github.com/jupyter-ai-contrib/jupyter-ai-tools/pull/24) | Open | Fix `add_cell` creating code cells without `execution_count` |
 | [y-crdt/pycrdt-websocket#138](https://github.com/y-crdt/pycrdt-websocket/pull/138) | Open | Fix sync handshake race in `YRoom.serve()` (correct fix, wrong library) |
